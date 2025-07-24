@@ -1,0 +1,186 @@
+{
+  "Mobile Legends Android": {
+    "Cyrax Mod Haftalık - 350 TL": {
+      "price": 350,
+      "stock": [
+        "CYRAX-KEY4",
+        "CYRAX-KEY5"
+      ]
+    },
+    "Cyrax Mod Aylık - 650 TL": {
+      "price": 650,
+      "stock": []
+    },
+    "TheBestML Haftalık - 250 TL": {
+      "price": 250,
+      "stock": [
+        "THEBEST-KEY1",
+        "THEBEST-KEY2"
+      ]
+    },
+    "TheBestML Aylık - 550 TL": {
+      "price": 550,
+      "stock": [
+        "THEBEST-KEY1",
+        "THEBEST-KEY2"
+      ]
+    }
+  },
+  "Mobile Legends İOS Mod": {
+    "Flue Haftalık - 550 TL": {
+      "price": 550,
+      "stock": [
+        "CYRAX-KEY2"
+      ]
+    },
+    "Flue Aylık - 850 TL": {
+      "price": 850,
+      "stock": [
+        "CYRAX-KEY2"
+      ]
+    },
+    "Gbox İpa Kurulum Mağaza - 550 TL": {
+      "price": 550,
+      "stock": [
+        "THEBEST-KEY1",
+        "THEBEST-KEY2"
+      ]
+    }
+  },
+  "8 Ball Pool Mod": {
+    "Ak Mod Haftalık(Üst Seviye Mod) - 600 TL": {
+      "price": 600,
+      "stock": [
+        "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AIM-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    },
+    "Ak Mod Aylık(Üst Seviye Mod) - 1500 TL": {
+      "price": 1500,
+      "stock": [
+        "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AIM-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    },
+    "PSH4X Aylık - 700 TL": {
+      "price": 700,
+      "stock": [
+        "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AIM-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    },
+    "İphone İOS Mod Haftalık - 500 TL": {
+      "price": 500,
+      "stock": [
+        "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AIM-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    },
+    "İphone İOS Mod Aylık - 900 TL": {
+      "price": 900,
+      "stock": [
+        "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AIM-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    }
+  },
+  "Pubg Mobile Android": {
+    "İnf Mod Rootsuz Haftalık - 350 TL": {
+      "price": 350,
+      "stock": [
+        "CYRAX-KEY2"
+      ]
+    },
+    "İnf Mod Rootsuz Aylık - 650 TL": {
+      "price": 650,
+      "stock": [
+        "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AIM-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    },
+    "Cheat Ninja Rootlu Aylık - 1200 TL": {
+      "price": 1200,
+      "stock": [
+        "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AIM-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    },
+    "Kernel Rootlu Aylık - 1250 TL": {
+      "price": 1250,
+      "stock": [
+        "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AIM-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    }
+  },
+  "Pubg Mobile İOS": {
+    "Star İOS No JB Hafta - 450 TL": {
+      "price": 450,
+      "stock": [
+        "CYRAX-KEY2"
+      ]
+    },
+    "Star İOS No JB Aylık - 850 TL": {
+      "price": 850,
+      "stock": [
+        "CYRAX-KEY2"
+      ]
+    }
+  },
+  "Pubg Mobile Emülatör": {
+    "KİNG Bypass Aylık- 1200 TL": {
+      "price": 1200,
+      "stock": [
+        "CYRAX-KEY2"
+      ]
+    }
+  },
+  "WildRift Mod": {
+    "Android Haftalık - 650 TL": {
+      "price": 650,
+      "stock": [
+        "CYRAX-KEY2"
+      ]
+    },
+    "Android Aylık - 1200 TL": {
+      "price": 1200,
+      "stock": [
+        "CYRAX-KEY2"
+      ]
+    },
+    "İOS Haftalık - 650 TL": {
+      "price": 650,
+      "stock": [
+        "CYRAX-KEY2"
+      ]
+    },
+    "İOS Aylık - 1200 TL": {
+      "price": 1200,
+      "stock": [
+        "CYRAX-KEY2"
+      ]
+    }
+  },
+  "Standoff 2": {
+    "St2 Android(Rootlu) & Emülatör Haftalık - 400 TL": {
+      "price": 400,
+      "stock": [
+        "CYRAX-KEY2"
+      ]
+    },
+    "St2 Android(Rootlu) & Emülatör Aylık - 750 TL": {
+      "price": 750,
+      "stock": [
+        "CYRAX-KEY2"
+      ]
+    }
+  },
+  "Gbox İpa Mağaza İOS": {
+    "Gbox Mağaza - 550 TL": {
+      "price": 550,
+      "stock": [
+        "CYRAX-KEY2"
+      ]
+    }
+  }
+}
