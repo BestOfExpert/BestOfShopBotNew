@@ -205,7 +205,7 @@ Açıklama: \`Tron TRC20 USDT Adresidir. Farklı ağ veya Crypto ile ödeme yap�
 🔑 **Ürün Anahtarınız:**
 \`${key}\`
 
-📥 Kurulum için kanal (Aşağıdaki Files Bot a Tıklayın Start Diyin Satın Aldığınız Anahtarı virgül olmadan girin Ordan Aldığınız Ürünü Seçin Otomatik Kurulum Dosyaları Gelecektir Bot: ): ${GROUP_LINK}`,
+📥 Kurulum için kanal: ${GROUP_LINK}`,
             {
                 parse_mode: "HTML",
             },
@@ -242,5 +242,20 @@ bot.on("message", (msg) => {
             "**Dekontunuz alındı. Kontrol Edildikten Ve Admin onayından sonra ürününüz teslim edilecektir.Yoğunluğa Göre Süre Uzayabilir.Lütfen Bekleyiniz.Teşekkür Ederiz**",
             { parse_mode: "Markdown" },
         );
+    }
+});
+
+
+// ✅ /log komutu: Admin log dosyasını alır
+bot.onText(/\/log/, (msg) => {
+    if (msg.from.id == ADMIN_ID) {
+        const logPath = 'used_keys.log';
+        if (fs.existsSync(logPath)) {
+            bot.sendDocument(msg.chat.id, fs.createReadStream(logPath));
+        } else {
+            bot.sendMessage(msg.chat.id, "📭 Henüz kayıtlı bir teslimat yok.");
+        }
+    } else {
+        bot.sendMessage(msg.chat.id, "❌ Bu komutu kullanma izniniz yok.");
     }
 });
