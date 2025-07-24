@@ -87,7 +87,8 @@ bot.on("callback_query", (query) => {
             },
         );
     } else if (data.startsWith("product_")) {
-        const productName = data.substring(8);
+        const encoded = data.substring(8);
+        const productName = Buffer.from(encoded, 'base64').toString('utf-8');
         const category = userState[chatId];
         if (!category || !products[category][productName]) {
             return bot.sendMessage(chatId, "Ürün bulunamadı.");
