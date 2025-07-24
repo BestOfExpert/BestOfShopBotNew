@@ -11,19 +11,6 @@ const PAPARA_KODU = "2096561589";
 const BINANCE_USDT = "TWdjyffvtyhbwuQzrNdh3A215EG6cNPWVL";
 const GROUP_LINK = "@BestOfShopFiles_Bot";
 
-function findCategoryAndCleanName(products, rawName) {
-    const normalize = (str) => str.toLowerCase().replace(/\s+/g, "").replace(/ı/g, "i").replace(/ş/g, "s").replace(/ç/g, "c").replace(/ğ/g, "g").replace(/ö/g, "o").replace(/ü/g, "u");
-    const cleanedInput = normalize(rawName);
-    for (const [category, items] of Object.entries(products)) {
-        for (const productName of Object.keys(items)) {
-            if (normalize(productName) === cleanedInput) {
-                return { category, productName };
-            }
-        }
-    }
-    return null;
-}
-
 let users = {};
 let userState = {};
 
@@ -99,22 +86,16 @@ bot.on("callback_query", (query) => {
                 },
             },
         );
-    } 
-    else if (data.startsWith("product_")) {
+    } else if (data.startsWith("product_")) {
         const encoded = data.substring(8);
         const rawProduct = Buffer.from(encoded, 'base64').toString('utf-8');
 
-        const result = findCategoryAndCleanName(products, rawProduct);
-        if (!result) return bot.sendMessage(chatId, "Ürün bulunamadı.");
-
-        const { category, productName } = result;
-
-        const encoded = data.substring(8);
-        const productName = Buffer.from(encoded, 'base64').toString('utf-8');
         let category = null;
-        for (const catName of Object.keys(products)) {
-            if (products[catName][productName]) {
-                category = catName;
+        let productName = null;
+        for (const [cat, items] of Object.entries(products)) {
+            if (items[rawProduct]) {
+                category = cat;
+                productName = rawProduct;
                 break;
             }
         }
@@ -122,6 +103,7 @@ bot.on("callback_query", (query) => {
         if (!category) {
             return bot.sendMessage(chatId, "Ürün bulunamadı.");
         }
+}
 
         users[chatId] = { category, product: productName };
         const price = products[category][productName].price;
