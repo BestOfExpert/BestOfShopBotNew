@@ -211,7 +211,7 @@ Açıklama: \`Tron TRC20 USDT Adresidir. Farklı ağ veya Crypto ile ödeme yap�
             },
         );
 
-        bot.sendMessage(ADMIN_ID, `✅ Sipariş teslim edildi: ${userId}`);
+        bot.sendMessage(ADMIN_ID, `✅ Sipariş teslim edildi. Kullanıcı: ${userId} | Ürün: ${sel.product} | Kod: ${key}`);
     }
 });
 
@@ -242,20 +242,5 @@ bot.on("message", (msg) => {
             "**Dekontunuz alındı. Kontrol Edildikten Ve Admin onayından sonra ürününüz teslim edilecektir.Yoğunluğa Göre Süre Uzayabilir.Lütfen Bekleyiniz.Teşekkür Ederiz**",
             { parse_mode: "Markdown" },
         );
-    }
-});
-
-
-// ✅ /log komutu: Admin log dosyasını alır
-bot.onText(/\/log/, (msg) => {
-    if (msg.from.id == ADMIN_ID) {
-        const logPath = 'used_keys.log';
-        if (fs.existsSync(logPath)) {
-            bot.sendDocument(msg.chat.id, fs.createReadStream(logPath));
-        } else {
-            bot.sendMessage(msg.chat.id, "📭 Henüz kayıtlı bir teslimat yok.");
-        }
-    } else {
-        bot.sendMessage(msg.chat.id, "❌ Bu komutu kullanma izniniz yok.");
     }
 });
