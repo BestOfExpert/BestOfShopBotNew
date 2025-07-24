@@ -211,7 +211,7 @@ Açıklama: \`Tron TRC20 USDT Adresidir. Farklı ağ veya Crypto ile ödeme yap�
             },
         );
 
-        bot.sendMessage(ADMIN_ID, `✅ Sipariş teslim edildi: ${userId}`);
+        bot.sendMessage(ADMIN_ID, `✅ Sipariş teslim edildi. Kullanıcı: ${userId} | Ürün: ${sel.product} | Kod: ${key}`);
     }
 });
 
@@ -243,51 +243,4 @@ bot.on("message", (msg) => {
             { parse_mode: "Markdown" },
         );
     }
-});
-
-
-
-// Kullanıcının sipariş teslim durumu kontrolü
-let deliveredOrders = {};
-
-bot.on("callback_query", async (query) => {
-  const data = query.data;
-  const chatId = query.message.chat.id;
-
-  if (!data.startsWith("onayla_")) return;
-
-  const [, userId, productName] = data.split("_");
-
-  // Sipariş daha önce onaylandıysa ikinci kez anahtar gönderme
-  if (deliveredOrders[userId + "_" + productName]) {
-    return bot.answerCallbackQuery(query.id, {
-      text: "Bu sipariş zaten teslim edildi.",
-      show_alert: true
-    });
-  }
-
-  const keysFile = `./keys/${productName}.json`;
-  if (!fs.existsSync(keysFile)) {
-    return bot.sendMessage(chatId, `❌ ${productName} için anahtar dosyası bulunamadı.`);
-  }
-
-  const keys = JSON.parse(fs.readFileSync(keysFile, "utf8"));
-  if (keys.length === 0) {
-    return bot.sendMessage(chatId, `❌ ${productName} için stokta anahtar kalmadı.`);
-  }
-
-  const key = keys.shift();
-  fs.writeFileSync(keysFile, JSON.stringify(keys, null, 2));
-  deliveredOrders[userId + "_" + productName] = true;
-
-  const logLine = `Kullanıcı: ${userId} | Ürün: ${productName} | Anahtar: ${key}\n`;
-  fs.appendFileSync("used_keys.log", logLine);
-
-  // Kullanıcıya klasik teslimat mesajı
-  bot.sendMessage(userId, `✅ Siparişiniz onaylandı.
-
-🔑 Kodunuz: ${key}`);
-
-  // Admin'e detaylı teslimat mesajı
-  bot.sendMessage(chatId, `✅ Sipariş teslim edildi.\nKullanıcı: ${userId}\nÜrün: ${productName}\nKod: ${key}`);
 });
