@@ -205,7 +205,9 @@ Açıklama: \`Tron TRC20 USDT Adresidir. Farklı ağ veya Crypto ile ödeme yap�
 🔑 **Ürün Anahtarınız:**
 \`${key}\`
 
-📥 Kurulum için kanal: ${GROUP_LINK}`,
+✅ Kurulum Dosyaları İçin @BestOfShopFiles_Bot Kanalına Tıklayın.start veya /start diyip botu başlatın.Yukarıda Verilen Anahtarı Bot'a Yazın ' süz olacak sekılde sadece anahtarı yazın.Aldığınız Ürünü Menüden Seçin Açıklamaları videoları ve dosyaları takıp edip yükleyerek devam edebilirsiniz teşekkür ederiz.
+
+📥 Kurulum Dosyaları İçin: ${GROUP_LINK}`,
             {
                 parse_mode: "HTML",
             },
