@@ -211,6 +211,10 @@ Açıklama: \`Tron TRC20 USDT Adresidir. Farklı ağ veya Crypto ile ödeme yap�
             },
         );
 
+        
+
+        // Log dosyasına kayıt
+        fs.appendFileSync("used_keys.log", `Kullanıcı ${userId} '${sel.product}' ürününü teslim aldı. Anahtar: ${selectedKey}\n`);
         bot.sendMessage(ADMIN_ID, `✅ Sipariş teslim edildi: ${userId}`);
     }
 });
