@@ -2,147 +2,199 @@
   "Mobile Legends Android": {
     "Cyrax Mod Haftalık - 350 TL": {
       "price": 350,
-      "stock": ["CYRAX-KEY1", "CYRAX-KEY2", "CYRAX-KEY3", "CYRAX-KEY4"]
+      "stock": ["CYRAX-KEYHafta1 - Admine Bu Kodu Gönder @BestOfExpert", "CYRAX-KEYHafta2 - Admine Bu Kodu Gönder @BestOfExpert", "CYRAX-KEYHafta3 - Admine Bu Kodu Gönder @BestOfExpert", "CYRAX-KEYHafta4 - Admine Bu Kodu Gönder @BestOfExpert"]
     },
     "Cyrax Mod Aylık - 650 TL": {
       "price": 650,
-      "stock": []
+      "stock": ["CYRAX-KEYAY1 - Admine Bu Kodu Gönder @BestOfExpert", "CYRAX-KEYAY2 - Admine Bu Kodu Gönder @BestOfExpert", "CYRAX-KEYAY3 - Admine Bu Kodu Gönder @BestOfExpert", "CYRAX-KEYAY4 - Admine Bu Kodu Gönder @BestOfExpert"]
     },
     "TheBestML Haftalık - 250 TL": {
       "price": 250,
-      "stock": ["THEBEST-KEY1", "THEBEST-KEY2"]
+      "stock": ["ML_69D083", "ML_3F07D0"]
     },
     "TheBestML Aylık - 550 TL": {
       "price": 550,
-      "stock": ["THEBEST-KEY1", "THEBEST-KEY2", "THEBEST-KEY3"]
+      "stock": ["ML_658EAD", "ML_55BD5E"]
     }
   },
   "Mobile Legends İOS Mod": {
     "Flue Haftalık - 550 TL": {
       "price": 550,
-      "stock": ["CYRAX-KEY2"]
+      "stock": ["07TAQNHX8HUSXRVW", "WT8LMG1LUMTVMNH1"]
     },
     "Flue Aylık - 850 TL": {
       "price": 850,
-      "stock": ["CYRAX-KEY2"]
+      "stock": ["85A4K657TBHJ6HV6"]
     },
     "Gbox İpa Kurulum Mağaza - 550 TL": {
       "price": 550,
-      "stock": ["@BestOfExpert iletişime geçin : Key :Gbox 101"]
+      "stock": [
+        "Gbox-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "Gbox-KEY2 - Admine Bu Kodu Gönder @BestOfExpert",
+        "Gbox-KEY3 - Admine Bu Kodu Gönder @BestOfExpert",
+        "Gbox-KEY4 - Admine Bu Kodu Gönder @BestOfExpert",
+        "Gbox-KEY5 - Admine Bu Kodu Gönder @BestOfExpert"
+      ]
     }
   },
   "8 Ball Pool Mod": {
     "Ak Mod En İyi Haftalık - 600 TL": {
       "price": 600,
       "stock": [
-        "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
-        "AIM-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
+        "AKHAFTA-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AKHAFTA-KEY2 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AKHAFTA-KEY3 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AKHAFTA-KEY4 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AKHAFTA-KEY5 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AKHAFTA-KEY6 - Admine Bu Kodu Gönder @BestOfExpert"
       ]
     },
     "Ak Mod En İyi Aylık - 1500 TL": {
       "price": 1500,
       "stock": [
-        "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
-        "AIM-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
+        "AK-AY-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AK-AY-KEY2 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AK-AY-KEY3 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AK-AY-KEY4 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AK-AY-KEY5 - Admine Bu Kodu Gönder @BestOfExpert"
       ]
     },
     "PSH4X Aylık - 700 TL": {
       "price": 700,
       "stock": [
-        "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
-        "AIM-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
+        "PSH4X-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "PSH4X-KEY2 - Admine Bu Kodu Gönder @BestOfExpert",
+        "PSH4X-KEY3 - Admine Bu Kodu Gönder @BestOfExpert",
+        "PSH4X-KEY4 - Admine Bu Kodu Gönder @BestOfExpert",
+        "PSH4X-KEY5 - Admine Bu Kodu Gönder @BestOfExpert"
       ]
     },
     "İphone İOS Mod Haftalık - 500 TL": {
       "price": 500,
       "stock": [
-        "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
-        "AIM-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
+        "8BP-İOSHAFTA1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "8BP-İOSHAFTA2 - Admine Bu Kodu Gönder @BestOfExpert",
+        "8BP-İOSHAFTA3 - Admine Bu Kodu Gönder @BestOfExpert",
+        "8BP-İOSHAFTA4 - Admine Bu Kodu Gönder @BestOfExpert",
+        "8BP-İOSHAFTA5 - Admine Bu Kodu Gönder @BestOfExpert"
       ]
     },
     "İphone İOS Mod Aylık - 900 TL": {
       "price": 900,
       "stock": [
-        "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
-        "AIM-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
+        "8BP-İOSAY1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "8BP-İOSAY2 - Admine Bu Kodu Gönder @BestOfExpert",
+        "8BP-İOSAY3 - Admine Bu Kodu Gönder @BestOfExpert",
+        "8BP-İOSAY4 - Admine Bu Kodu Gönder @BestOfExpert",
+        "8BP-İOSAY5 - Admine Bu Kodu Gönder @BestOfExpert"
       ]
     }
   },
   "Pubg Mobile Android": {
     "İnf Mod Rootsuz Haftalık - 350 TL": {
       "price": 350,
-      "stock": ["CYRAX-KEY2"]
+      "stock": ["AndPubgHafta-KEY1 - Admine Bu Kodu Gönder @BestOfExpert", "AndPubgHafta-KEY2 - Admine Bu Kodu Gönder @BestOfExpert", "AndPubgHafta-KEY3 - Admine Bu Kodu Gönder @BestOfExpert",]
     },
     "İnf Mod Rootsuz Aylık - 650 TL": {
       "price": 650,
       "stock": [
-        "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
-        "AIM-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
+        "AndPubgAy-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "AndPubgAy-KEY2 - Admine Bu Kodu Gönder @BestOfExpert", "AndPubgAy-KEY3 - Admine Bu Kodu Gönder @BestOfExpert", "AndPubgAy-KEY4 - Admine Bu Kodu Gönder @BestOfExpert",
       ]
     },
     "Cheat Ninja Rootlu Aylık - 1200 TL": {
       "price": 1200,
       "stock": [
-        "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
-        "AIM-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
+        "Sharp-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "Sharp-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
       ]
     },
     "Kernel Rootlu Aylık - 1250 TL": {
       "price": 1250,
       "stock": [
-        "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
-        "AIM-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
+        "Kernel-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "Kernel-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
       ]
     }
   },
   "Pubg Mobile İOS": {
     "Star İOS No JB Hafta - 450 TL": {
       "price": 450,
-      "stock": ["CYRAX-KEY2"]
+      "stock": [
+        "StarHafta1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "StarHafta2 - Admine Bu Kodu Gönder @BestOfExpert",
+        "StarHafta3 - Admine Bu Kodu Gönder @BestOfExpert",
+        "StarHafta4 - Admine Bu Kodu Gönder @BestOfExpert",
+        "StarHafta5 - Admine Bu Kodu Gönder @BestOfExpert"
+      ]
     },
     "Star İOS No JB Aylık - 850 TL": {
       "price": 850,
-      "stock": ["CYRAX-KEY2"]
+      "stock": [
+        "StarAy100 - Admine Bu Kodu Gönder @BestOfExpert",
+        "StarAy101 - Admine Bu Kodu Gönder @BestOfExpert",
+        "StarAy102 - Admine Bu Kodu Gönder @BestOfExpert",
+        "StarAy103 - Admine Bu Kodu Gönder @BestOfExpert",
+        "StarAy104 - Admine Bu Kodu Gönder @BestOfExpert"
+      ]
     }
   },
   "Pubg Mobile Emülatör": {
     "KİNG Bypass Aylık- 1200 TL": {
       "price": 1200,
-      "stock": []
+      "stock": ["King Emu AY1 - Admine Bu Kodu Gönder @BestOfExpert"]
     }
   },
   "WildRift Mod": {
     "Android Haftalık - 650 TL": {
       "price": 650,
-      "stock": ["CYRAX-KEY2"]
+      "stock": ["Wild247DAYXmfhAOUt"]
     },
     "Android Aylık - 1200 TL": {
       "price": 1200,
-      "stock": ["CYRAX-KEY2"]
+      "stock": ["Wild2430DAY2rFHfNBT"]
     },
     "İOS Haftalık - 650 TL": {
       "price": 650,
-      "stock": ["CYRAX-KEY2"]
+      "stock": ["wild2424-week-k5FGjFaAt7O2F2EX"]
     },
     "İOS Aylık - 1200 TL": {
       "price": 1200,
-      "stock": ["CYRAX-KEY2"]
+      "stock": ["wild ios Ay1 - Admine Bu Kodu Gönder @BestOfExpert"]
     }
   },
   "Standoff 2": {
     "St2 Android(Rootlu) & Emülatör Haftalık - 400 TL": {
       "price": 400,
-      "stock": ["CYRAX-KEY2"]
+      "stock": [
+        "st2 Hafta1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "st2 Hafta2 - Admine Bu Kodu Gönder @BestOfExpert",
+        "st2 Hafta3 - Admine Bu Kodu Gönder @BestOfExpert",
+        "st2 Hafta4 - Admine Bu Kodu Gönder @BestOfExpert",
+        "st2 Hafta5 - Admine Bu Kodu Gönder @BestOfExpert"
+      ]
     },
     "St2 Android(Rootlu) & Emülatör Aylık - 750 TL": {
       "price": 750,
-      "stock": ["CYRAX-KEY2"]
+      "stock": [
+        "st2 Ay1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "st2 Ay2 - Admine Bu Kodu Gönder @BestOfExpert",
+        "st2 Ay3 - Admine Bu Kodu Gönder @BestOfExpert",
+        "st2 Ay4 - Admine Bu Kodu Gönder @BestOfExpert",
+        "st2 Ay5 - Admine Bu Kodu Gönder @BestOfExpert"
+      ]
     }
   },
   "Gbox İpa Mağaza İOS": {
     "Gbox Mağaza - 550 TL": {
       "price": 550,
-      "stock": []
+      "stock": [
+        "GBOX1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "GBOX2 - Admine Bu Kodu Gönder @BestOfExpert",
+        "GBOX3 - Admine Bu Kodu Gönder @BestOfExpert",
+        "GBOX4 - Admine Bu Kodu Gönder @BestOfExpert",
+        "GBOX5 - Admine Bu Kodu Gönder @BestOfExpert"
+      ]
     }
   }
 }
