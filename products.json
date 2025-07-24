@@ -2,7 +2,12 @@
   "Mobile Legends Android": {
     "Cyrax Mod Haftalık - 350 TL": {
       "price": 350,
-      "stock": ["CYRAX-KEY4", "CYRAX-KEY5"]
+      "stock": [
+        "CYRAX-KEY1",
+        "CYRAX-KEY2",
+        "CYRAX-KEY3",
+        "CYRAX-KEY4",
+      ]
     },
     "Cyrax Mod Aylık - 650 TL": {
       "price": 650,
@@ -10,36 +15,48 @@
     },
     "TheBestML Haftalık - 250 TL": {
       "price": 250,
-      "stock": ["THEBEST-KEY1", "THEBEST-KEY2"]
+      "stock": [
+        "THEBEST-KEY1",
+        "THEBEST-KEY2"
+      ]
     },
     "TheBestML Aylık - 550 TL": {
       "price": 550,
-      "stock": ["THEBEST-KEY1", "THEBEST-KEY2"]
+      "stock": [
+        "THEBEST-KEY1",
+        "THEBEST-KEY2"
+      ]
     }
   },
   "Mobile Legends İOS Mod": {
     "Flue Haftalık - 550 TL": {
       "price": 550,
-      "stock": ["CYRAX-KEY2"]
+      "stock": [
+        "CYRAX-KEY2"
+      ]
     },
     "Flue Aylık - 850 TL": {
       "price": 850,
-      "stock": ["CYRAX-KEY2"]
+      "stock": [
+        "CYRAX-KEY2"
+      ]
     },
     "Gbox İpa Kurulum Mağaza - 550 TL": {
       "price": 550,
-      "stock": ["THEBEST-KEY1", "THEBEST-KEY2"]
+      "stock": [
+        "@BestOfExpert iletişime geçin : Key :Gbox 101"
+      ]
     }
   },
   "8 Ball Pool Mod": {
-    "Global Pro Haftalık - 600 TL": {
+    "Ak Mod En İyi Haftalık - 600 TL": {
       "price": 600,
       "stock": [
         "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
         "AIM-KEY2 - Admine Bu Kodu Gönder @BestOfExpert"
       ]
     },
-    "Global Pro Aylık - 1500 TL": {
+    "Ak Mod En İyi Aylık - 1500 TL": {
       "price": 1500,
       "stock": [
         "AIM-KEY1 - Admine Bu Kodu Gönder @BestOfExpert",
@@ -71,7 +88,9 @@
   "Pubg Mobile Android": {
     "İnf Mod Rootsuz Haftalık - 350 TL": {
       "price": 350,
-      "stock": ["CYRAX-KEY2"]
+      "stock": [
+        "CYRAX-KEY2"
+      ]
     },
     "İnf Mod Rootsuz Aylık - 650 TL": {
       "price": 650,
@@ -98,51 +117,67 @@
   "Pubg Mobile İOS": {
     "Star İOS No JB Hafta - 450 TL": {
       "price": 450,
-      "stock": ["CYRAX-KEY2"]
+      "stock": [
+        "CYRAX-KEY2"
+      ]
     },
     "Star İOS No JB Aylık - 850 TL": {
       "price": 850,
-      "stock": ["CYRAX-KEY2"]
+      "stock": [
+        "CYRAX-KEY2"
+      ]
     }
   },
   "Pubg Mobile Emülatör": {
     "KİNG Bypass Aylık- 1200 TL": {
       "price": 1200,
-      "stock": ["CYRAX-KEY2"]
+      "stock": []
     }
   },
   "WildRift Mod": {
     "Android Haftalık - 650 TL": {
       "price": 650,
-      "stock": ["CYRAX-KEY2"]
+      "stock": [
+        "CYRAX-KEY2"
+      ]
     },
     "Android Aylık - 1200 TL": {
       "price": 1200,
-      "stock": ["CYRAX-KEY2"]
+      "stock": [
+        "CYRAX-KEY2"
+      ]
     },
     "İOS Haftalık - 650 TL": {
       "price": 650,
-      "stock": ["CYRAX-KEY2"]
+      "stock": [
+        "CYRAX-KEY2"
+      ]
     },
     "İOS Aylık - 1200 TL": {
       "price": 1200,
-      "stock": ["CYRAX-KEY2"]
+      "stock": [
+        "CYRAX-KEY2"
+      ]
     }
   },
   "Standoff 2": {
     "St2 Android(Rootlu) & Emülatör Haftalık - 400 TL": {
       "price": 400,
-      "stock": ["CYRAX-KEY2"]
+      "stock": [
+        "CYRAX-KEY2"
+      ]
     },
     "St2 Android(Rootlu) & Emülatör Aylık - 750 TL": {
       "price": 750,
-      "stock": ["CYRAX-KEY2"]
+      "stock": [
+        "CYRAX-KEY2"
+      ]
     }
   },
   "Gbox İpa Mağaza İOS": {
     "Gbox Mağaza - 550 TL": {
       "price": 550,
-      "stock": ["CYRAX-KEY2"]
+      "stock": []
     }
   }
 }

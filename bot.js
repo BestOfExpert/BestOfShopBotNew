@@ -87,23 +87,11 @@ bot.on("callback_query", (query) => {
             },
         );
     } else if (data.startsWith("product_")) {
-        const encoded = data.substring(8);
-        const rawProduct = Buffer.from(encoded, 'base64').toString('utf-8');
-
-        let category = null;
-        let productName = null;
-        for (const [cat, items] of Object.entries(products)) {
-            if (items[rawProduct]) {
-                category = cat;
-                productName = rawProduct;
-                break;
-            }
-        }
-
-        if (!category) {
+        const productName = data.substring(8);
+        const category = userState[chatId];
+        if (!category || !products[category][productName]) {
             return bot.sendMessage(chatId, "Ürün bulunamadı.");
         }
-}
 
         users[chatId] = { category, product: productName };
         const price = products[category][productName].price;
@@ -217,7 +205,7 @@ Açıklama: \`Tron TRC20 USDT Adresidir. Farklı ağ veya Crypto ile ödeme yap�
 🔑 **Ürün Anahtarınız:**
 \`${key}\`
 
-📥 Kurulum için kanal: ${GROUP_LINK}`,
+📥 Kurulum için kanal (Aşağıdaki Files Bot a Tıklayın Start Diyin Satın Aldığınız Anahtarı virgül olmadan girin Ordan Aldığınız Ürünü Seçin Otomatik Kurulum Dosyaları Gelecektir Bot: ): ${GROUP_LINK}`,
             {
                 parse_mode: "HTML",
             },
