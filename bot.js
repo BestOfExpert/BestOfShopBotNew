@@ -9,7 +9,7 @@ const ADMIN_ID = 1447919062;
 const IBAN = "TR45 0001 0004 8875 9375 7450 07";
 const PAPARA_KODU = "2096561589";
 const BINANCE_USDT = "TWdjyffvtyhbwuQzrNdh3A215EG6cNPWVL";
-const GROUP_LINK = "https://t.me/+4f0_8Ou7lQBhMjc0";
+const GROUP_LINK = "@BestOfShopFiles_Bot";
 
 let users = {};
 let userState = {};
@@ -205,13 +205,18 @@ Açıklama: \`Tron TRC20 USDT Adresidir. Farklı ağ veya Crypto ile ödeme yap�
 🔑 **Ürün Anahtarınız:**
 \`${key}\`
 
+Satın Aldığınız Anahtar İle Aşagıdan @BestOfShopFiles_Bot'a Gidip Aldıgınız Ürünü Seçerek Kurulum Dosyalarını İndirebilirsiniz.
+
 📥 Kurulum Dosyaları İçin: ${GROUP_LINK}`,
             {
                 parse_mode: "HTML",
             },
         );
 
-        bot.sendMessage(ADMIN_ID, `✅ Sipariş teslim edildi. Kullanıcı: ${userId} | Ürün: ${sel.product} | Kod: ${key}`);
+        bot.sendMessage(
+            ADMIN_ID,
+            `✅ Sipariş teslim edildi. Kullanıcı: ${userId} | Ürün: ${sel.product} | Kod: ${key}`,
+        );
     }
 });
 
