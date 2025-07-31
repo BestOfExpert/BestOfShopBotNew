@@ -2,7 +2,11 @@
   "Mobile Legends Android": {
     "Cyrax Mod Haftalık - 350 TL": {
       "price": 350,
-      "stock": ["cyraxmod_7dQVtut2M9pzpA", "cyraxmod_7dU5y9BhwfbQLf"]
+      "stock": [
+        "cyraxmod_7dFXGZATRbLveV",
+        "cyraxmod_7d2UxcpeTE34Vk",
+        "cyraxmod_7dHoqeFoBzrq6e"
+      ]
     },
     "Cyrax Mod Aylık - 650 TL": {
       "price": 650,
@@ -10,7 +14,7 @@
     },
     "TheBestML Haftalık - 250 TL": {
       "price": 250,
-      "stock": ["ML_69D083", "ML_3F07D0"]
+      "stock": ["ML_69D083", "ML_D6F34D"]
     },
     "TheBestML Aylık - 550 TL": {
       "price": 550,
@@ -99,22 +103,18 @@
       "price": 800,
       "stock": [
         "AndPubgAy-KEY1",
-        "AndPubgAy-KEY2", "AndPubgAy-KEY3", "AndPubgAy-KEY4"
+        "AndPubgAy-KEY2",
+        "AndPubgAy-KEY3",
+        "AndPubgAy-KEY4"
       ]
     },
     "Cheat Ninja Rootlu Aylık - 1200 TL": {
       "price": 1200,
-      "stock": [
-        "Sharp-KEY1",
-        "Sharp-KEY2"
-      ]
+      "stock": ["Sharp-KEY1", "Sharp-KEY2"]
     },
     "Kernel Rootlu Aylık - 1250 TL": {
       "price": 1250,
-      "stock": [
-        "Kernel-KEY1",
-        "Kernel-KEY2"
-      ]
+      "stock": ["Kernel-KEY1", "Kernel-KEY2"]
     }
   },
   "Pubg Mobile İOS": {
@@ -148,7 +148,7 @@
   "WildRift Mod": {
     "Android Haftalık - 650 TL": {
       "price": 650,
-      "stock": ["Wild247DAYXmfhAOUt"]
+      "stock": ["Wild247DAYC7iQCTIc"]
     },
     "Android Aylık - 1200 TL": {
       "price": 1200,
