@@ -6,7 +6,7 @@ const token = "7545067961:AAGEeXPWdG4f3o-w8b5EvIFhsdzxz8Mc_yI"; // Tokenini bura
 const bot = new TelegramBot(token, { polling: true });
 
 const ADMIN_ID = 1447919062;
-const IBAN = "TR45 0001 0004 8875 9375 7450 07";
+const IBAN = "TR230010300000000014365322";
 const PAPARA_KODU = "2096561589";
 const BINANCE_USDT = "TWdjyffvtyhbwuQzrNdh3A215EG6cNPWVL";
 const GROUP_LINK = "@BestOfShopFiles_Bot";
@@ -157,11 +157,11 @@ ${description}
 
 IBAN: \`${IBAN}\`
 
-Açıklama: \`8595962689\`
+Açıklama: \`88295280440\`
 
-Alıcı Adı: \`MYPAYZ ÖDEME KURULUŞU A.Ş.\`
+Alıcı Adı: \`Moka United Ödeme ve Elektronik Para Kuruluşu A.Ş.\`
 
-‼️ **Dikkat:** Açıklamadaki numarayı yazmassanız ödeme bize geçmez!Lütfen Açıklamaya 8595962689 yazmayı unutmayın.
+‼️ **Dikkat:** Açıklamadaki numarayı yazmassanız ödeme bize geçmez!Lütfen Açıklamaya 88295280440 yazmayı unutmayın.
 
 **Ödeme Yaptıktan Sonra Lütfen dekontu PDF veya ekran görüntüsü olarak buraya atın.Farklı Dekont Veya Ekran Görüntüsü Atan Kullanıcılar Yasaklanacaktır.**`;
         } else if (data === "pay_papara") {
