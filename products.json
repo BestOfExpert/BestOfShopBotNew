@@ -3,32 +3,32 @@
     "Cyrax Mod Haftalık - 350 TL": {
       "price": 350,
       "stock": [
-        "cyraxmod_7dcpo4VA6S6Xb8",
-        "cyraxmod_7dQwT6cQfumaK8",
-        "cyraxmod_7dMbdzo1QtHTvp"
+        "cyraxmod_7d4M8BSBH9WF2S",
+        "cyraxmod_7dwtRRKrLk1TgD",
+        "cyraxmod_7duCMxD2TzlRPr"
       ]
     },
     "Cyrax Mod Aylık - 650 TL": {
       "price": 650,
-      "stock": ["cyraxmod_30dDHbhP9SK54qv", "cyraxmod_30dA4pggyTK7HpE"]
+      "stock": ["cyraxmod_30dGA73xSlR4oPt", "cyraxmod_30dTCBXB1D5QHsg"]
     },
     "TheBestML Haftalık - 250 TL": {
       "price": 250,
-      "stock": ["ML_36A6D7", "ML_946C6A", "ML_663DE0"]
+      "stock": ["ML_835166", "ML_CE8307", "ML_E81970"]
     },
     "TheBestML Aylık - 550 TL": {
       "price": 550,
-      "stock": ["ML_391537", "ML_6BD16F"]
+      "stock": ["ML_9FFD76", "ML_6BD16F"]
     }
   },
   "Mobile Legends İOS Mod": {
     "Flue Haftalık - 550 TL": {
       "price": 550,
-      "stock": ["YVFPX83XRVNCX0R4", "3EYK1U3JX7OBJ9CE"]
+      "stock": ["7GQH63HP5WJDD3QU", "2NXJ6AHLTBODAR4A"]
     },
     "Flue Aylık - 850 TL": {
       "price": 850,
-      "stock": ["N6RECSD02P11LBOJ"]
+      "stock": ["FV3WSX0W80XEBMQ9"]
     },
     "Gbox İpa Kurulum Mağaza - 550 TL": {
       "price": 550,
@@ -148,19 +148,19 @@
   "WildRift Mod": {
     "Android Haftalık - 650 TL": {
       "price": 650,
-      "stock": ["Wild247DAYImPFgWnp"]
+      "stock": ["Wild247DAY1e5xxoh5"]
     },
     "Android Aylık - 1200 TL": {
       "price": 1200,
-      "stock": ["Wild2430DAY3EjYYrub"]
+      "stock": [""]
     },
     "İOS Haftalık - 650 TL": {
       "price": 650,
-      "stock": ["Wild24-7day-P4r0kcqBNXKId7b"]
+      "stock": [""]
     },
     "İOS Aylık - 1200 TL": {
       "price": 1200,
-      "stock": ["Wild24-30day-cXlTaFmYkHJr6L4"]
+      "stock": ["Wild24-30day-faQxSAijBlhnZyz"]
     }
   },
   "Standoff 2": {
