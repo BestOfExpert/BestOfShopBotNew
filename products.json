@@ -2,11 +2,7 @@
   "Mobile Legends Android": {
     "Cyrax Mod Haftalık - 350 TL": {
       "price": 350,
-      "stock": [
-        "cyrax hafta1",
-        "cyrax hafta2",
-        "cyrax hafta3"
-      ]
+      "stock": ["cyrax hafta1", "cyrax hafta2", "cyrax hafta3"]
     },
     "Cyrax Mod Aylık - 650 TL": {
       "price": 650,

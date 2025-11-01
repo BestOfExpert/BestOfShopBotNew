@@ -7,7 +7,7 @@ const bot = new TelegramBot(token, { polling: true });
 
 const ADMIN_ID = 1447919062;
 const IBAN = "TR230010300000000014365322";
-const PAPARA_KODU = "2096561589";
+const PAPARA_KODU = "papara ödeme yöntemi şuanda kullanımda değildir";
 const BINANCE_USDT = "TWdjyffvtyhbwuQzrNdh3A215EG6cNPWVL";
 const GROUP_LINK = "@BestOfShopFiles_Bot";
 
@@ -169,7 +169,7 @@ Alıcı Adı: \`Moka United Ödeme ve Elektronik Para Kuruluşu A.Ş.\`
 
 Papara Numarası: \`${PAPARA_KODU}\`
 
-Açıklama: Boş Bırakın
+Açıklama: papara ödeme yöntemi şuanda kullanımda değildir
 
 **Ödeme Yaptıktan Sonra Lütfen dekontu PDF veya ekran görüntüsü olarak buraya atın.Farklı Dekont Veya Ekran Görüntüsü Atan Kullanıcılar Yasaklanacaktır.**`;
         } else if (data === "pay_binance") {
