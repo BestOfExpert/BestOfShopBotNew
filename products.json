@@ -1,11 +1,11 @@
 {
   "Mobile Legends Android": {
-    "Cyrax Mod Haftalık - 350 TL": {
-      "price": 350,
+    "Cyrax Mod Haftalık - 400 TL": {
+      "price": 400,
       "stock": ["cyrax hafta1", "cyrax hafta2", "cyrax hafta3"]
     },
-    "Cyrax Mod Aylık - 650 TL": {
-      "price": 650,
+    "Cyrax Mod Aylık - 725 TL": {
+      "price": 725,
       "stock": ["cyrax ay1", "cyrax ay2"]
     },
     "TheBestML Haftalık - 250 TL": {
@@ -38,8 +38,8 @@
     }
   },
   "8 Ball Pool Mod": {
-    "Ak Mod En İyi Haftalık - 600 TL": {
-      "price": 600,
+    "Ak Mod En İyi Haftalık - 575 TL": {
+      "price": 575,
       "stock": [
         "AKHAFTA-KEY1-Admine Bu Kodu Gönder @BestOfExpert",
         "AKHAFTA-KEY2-Admine Bu Kodu Gönder @BestOfExpert",
@@ -49,8 +49,8 @@
         "AKHAFTA-KEY6-Admine Bu Kodu Gönder @BestOfExpert"
       ]
     },
-    "Ak Mod En İyi Aylık - 1500 TL": {
-      "price": 1500,
+    "Ak Mod En İyi Aylık - 1375 TL": {
+      "price": 1375,
       "stock": [
         "AK-AY-KEY1-Admine Bu Kodu Gönder @BestOfExpert",
         "AK-AY-KEY2-Admine Bu Kodu Gönder @BestOfExpert",
@@ -59,8 +59,8 @@
         "AK-AY-KEY5-Admine Bu Kodu Gönder @BestOfExpert"
       ]
     },
-    "PSH4X Aylık - 875 TL": {
-      "price": 875,
+    "PSH4X Aylık - 900 TL": {
+      "price": 900,
       "stock": [
         "PSH4X-KEY1-Admine Bu Kodu Gönder @BestOfExpert",
         "PSH4X-KEY2-Admine Bu Kodu Gönder @BestOfExpert",
@@ -91,12 +91,12 @@
     }
   },
   "Pubg Mobile Android": {
-    "Shield Plus Rootsuz Haftalık - 450 TL": {
-      "price": 450,
+    "Shield Plus Rootsuz Haftalık - 500 TL": {
+      "price": 500,
       "stock": ["AndPubgHafta-KEY1", "AndPubgHafta-KEY2", "AndPubgHafta-KEY3"]
     },
-    "Shield Plus Mod Rootsuz Aylık - 800 TL": {
-      "price": 800,
+    "Shield Plus Mod Rootsuz Aylık - 875 TL": {
+      "price": 875,
       "stock": [
         "AndPubgAy-KEY1",
         "AndPubgAy-KEY2",
@@ -194,8 +194,8 @@
     }
   },
   "Delta Force IOS Android": {
-    "Delta Force İOS Hafta - 550 TL": {
-      "price": 550,
+    "Delta Force İOS Hafta - 600 TL": {
+      "price": 600,
       "stock": [
         "DELTAİOSHafta1-Admine Bu Kodu Gönder @BestOfExpert",
         "DELTAİOSHafta2-Admine Bu Kodu Gönder @BestOfExpert",
