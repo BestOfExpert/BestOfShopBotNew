@@ -8,11 +8,11 @@
       "price": 725,
       "stock": ["cyrax ay1", "cyrax ay2"]
     },
-    "TheBestML FULL Sürüm + Simple İMGUİ Hafta - 400 TL": {
+    "TheBestML FULL Sürüm + İMGUİ Hafta - 400 TL": {
       "price": 400,
       "stock": ["thebesthafta1", "thebesthafta3", "thebesthafta4"]
     },
-    "TheBestML FULL Sürüm + Simple İMGUİ Aylık - 750 TL": {
+    "TheBestML FULL Sürüm + İMGUİ Aylık - 750 TL": {
       "price": 750,
       "stock": ["thebesthafta1", "thebesthafta3", "thebesthafta4"]
     },
@@ -150,11 +150,11 @@
     }
   },
   "WildRift Mod": {
-    "Android Haftalık - 650 TL": {
+    "Android Haftalık - 650 TL BAKIMDA": {
       "price": 650,
       "stock": ["Wild247DAY1e5xxoh5"]
     },
-    "Android Aylık - 1200 TL": {
+    "Android Aylık - 1200 TL BAKIMDA": {
       "price": 1200,
       "stock": ["Wild2430DAYH56eSlOF"]
     },
