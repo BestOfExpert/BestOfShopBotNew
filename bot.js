@@ -212,8 +212,28 @@ bot.on("callback_query", (query) => {
     }
 
     if (data === 'admin_add_product' && chatId === ADMIN_ID) {
-        adminState[chatId] = { action: 'add_product', step: 1, buffer: {} };
-        return bot.sendMessage(chatId, 'Yeni ürün ekleme: Hangi kategoriye eklemek istiyorsunuz? (Kategori adı yazın)');
+        const categories = Object.keys(products);
+        const buttons = categories.map((cat) => [
+            { text: `${ICONS[cat] || ICONS.defaultCategory} ${cat}`, callback_data: makeCallbackRef({ type: 'admin_add_to_cat', category: cat }) },
+        ]);
+        buttons.push([{ text: '➕ Yeni Kategori Oluştur', callback_data: 'admin_new_category' }]);
+        buttons.push([{ text: '🔙 Geri', callback_data: 'admin_back' }]);
+        return bot.sendMessage(chatId, '**Ürün eklemek istediğiniz kategoriyi seçin:**', {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: buttons },
+        });
+    }
+
+    // Admin: add product to existing category
+    if (ref && ref.type === 'admin_add_to_cat' && chatId === ADMIN_ID) {
+        adminState[chatId] = { action: 'add_product', step: 2, buffer: { category: ref.category } };
+        return bot.sendMessage(chatId, `*${ref.category}* kategorisine ürün ekleniyor.\nÜrün adı girin:`, { parse_mode: 'Markdown' });
+    }
+
+    // Admin: create new category
+    if (data === 'admin_new_category' && chatId === ADMIN_ID) {
+        adminState[chatId] = { action: 'add_category', step: 1, buffer: {} };
+        return bot.sendMessage(chatId, 'Yeni kategori adı girin:');
     }
 
     // Admin: set category icon
@@ -457,6 +477,20 @@ bot.on("message", (msg) => {
             fs.writeFileSync(descPath, text, 'utf-8');
             delete adminState[chatId];
             return bot.sendMessage(chatId, `✅ *${state.productName}* açıklaması güncellendi.`, { parse_mode: 'Markdown' });
+        }
+
+        if (state.action === 'add_category') {
+            const text = (msg.text || '').trim();
+            if (state.step === 1) {
+                if (!text) return bot.sendMessage(chatId, 'Geçersiz kategori adı. Tekrar deneyin.');
+                if (products[text]) return bot.sendMessage(chatId, 'Bu kategori zaten mevcut. Başka bir isim girin.');
+                products[text] = {};
+                saveProducts(products);
+                state.buffer.category = text;
+                state.action = 'add_product';
+                state.step = 2;
+                return bot.sendMessage(chatId, `✅ *${text}* kategorisi oluşturuldu!\nŞimdi bu kategoriye eklenecek ürün adını girin:`, { parse_mode: 'Markdown' });
+            }
         }
 
         if (state.action === 'add_product') {
