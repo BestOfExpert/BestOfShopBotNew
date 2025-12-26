@@ -47,6 +47,19 @@ function saveIcons(icons) {
 
 let ICONS = loadIcons();
 
+// Short callback ref map to avoid long/invalid callback_data values.
+// Stores small keys (ref_<id>) -> payload object. Used only for admin/internal flows.
+const callbackMap = {};
+function makeCallbackRef(obj) {
+    const id = Math.random().toString(36).slice(2, 9);
+    callbackMap[id] = obj;
+    return `ref_${id}`;
+}
+function resolveCallbackRef(data) {
+    if (!data || !data.startsWith('ref_')) return null;
+    const id = data.slice(4);
+    return callbackMap[id] || null;
+}
 // simple HTML escaper for user-provided text
 function escapeHtml(text) {
     if (!text) return '';
@@ -104,16 +117,30 @@ bot.onText(/\/admin/, (msg) => {
 
 bot.on("callback_query", (query) => {
     const chatId = query.from.id;
-    const data = query.data;
+    let data = query.data;
     console.log('callback_query from', chatId, 'data=', data);
     // acknowledge callback to remove loading state
     try { bot.answerCallbackQuery(query.id).catch(()=>{}); } catch (e) {}
     const products = loadProducts();
+    // If this callback is a ref we created, resolve it into a synthetic data string
+    const ref = resolveCallbackRef(data);
+    if (ref) {
+        // Map ref types to the legacy data strings used by the handlers
+        if (ref.type === 'admin_cat') data = `admin_cat_${encodeURIComponent(ref.category)}`;
+        else if (ref.type === 'admin_prod') data = `admin_prod_${encodeURIComponent(ref.category)}|${encodeURIComponent(ref.product)}`;
+        else if (ref.type === 'admin_set_icon_cat') data = `admin_set_icon_cat|${encodeURIComponent(ref.category)}`;
+        else if (ref.type === 'admin_set_icon_prod') data = `admin_set_icon_prod|${encodeURIComponent(ref.category)}|${encodeURIComponent(ref.product)}`;
+        else if (ref.type === 'admin_edit_price') data = `admin_edit_price|${encodeURIComponent(ref.category)}|${encodeURIComponent(ref.product)}`;
+        else if (ref.type === 'admin_edit_desc') data = `admin_edit_desc|${encodeURIComponent(ref.category)}|${encodeURIComponent(ref.product)}`;
+        else if (ref.type === 'admin_delete') data = `admin_delete|${encodeURIComponent(ref.category)}|${encodeURIComponent(ref.product)}`;
+        else if (ref.type === 'admin_products') data = 'admin_products';
+        else if (ref.type === 'admin_set_icon') data = `admin_set_icon|${encodeURIComponent(ref.category)}`;
+    }
     // Admin callbacks
     if (data === 'admin_products' && chatId === ADMIN_ID) {
         const categories = Object.keys(products);
         const buttons = categories.map((cat) => [
-            { text: `${ICONS[cat] || ICONS.defaultCategory} ${cat}`, callback_data: `admin_cat_${encodeURIComponent(cat)}` },
+            { text: `${ICONS[cat] || ICONS.defaultCategory} ${cat}`, callback_data: makeCallbackRef({ type: 'admin_cat', category: cat }) },
         ]);
         return bot.sendMessage(chatId, "**Kategori seçin (düzenlemek için):**", {
             parse_mode: 'Markdown',
@@ -125,13 +152,13 @@ bot.on("callback_query", (query) => {
         const category = decodeURIComponent(data.substring(10));
         const prodNames = Object.keys(products[category] || {});
         const buttons = prodNames.map((p) => [
-            { text: `${ICONS[`prod:${category}|${p}`] || ICONS.defaultProduct} ${p}`, callback_data: `admin_prod_${encodeURIComponent(category)}|${encodeURIComponent(p)}` },
+            { text: `${ICONS[`prod:${category}|${p}`] || ICONS.defaultProduct} ${p}`, callback_data: makeCallbackRef({ type: 'admin_prod', category, product: p }) },
         ]);
         // Add an extra row to edit category icon
         const keyboard = [
             ...buttons,
-            [{ text: '🔖 İkonu Düzenle', callback_data: `admin_set_icon_cat|${encodeURIComponent(category)}` }],
-            [{ text: '🔙 Geri', callback_data: 'admin_products' }],
+            [{ text: '🔖 İkonu Düzenle', callback_data: makeCallbackRef({ type: 'admin_set_icon_cat', category }) }],
+            [{ text: '🔙 Geri', callback_data: makeCallbackRef({ type: 'admin_products' }) }],
         ];
         return bot.sendMessage(chatId, `**${category}** — Ürün seçin:`, {
             parse_mode: 'Markdown',
@@ -149,11 +176,11 @@ bot.on("callback_query", (query) => {
             parse_mode: 'Markdown',
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: '✏️ Fiyatı Düzenle', callback_data: `admin_edit_price|${encodeURIComponent(category)}|${encodeURIComponent(productName)}` }],
-                    [{ text: '📝 Açıklamayı Düzenle', callback_data: `admin_edit_desc|${encodeURIComponent(category)}|${encodeURIComponent(productName)}` }],
-                    [{ text: '🗑 Ürünü Sil', callback_data: `admin_delete|${encodeURIComponent(category)}|${encodeURIComponent(productName)}` }],
-                    [{ text: '🔖 İkonu Düzenle', callback_data: `admin_set_icon_prod|${encodeURIComponent(category)}|${encodeURIComponent(productName)}` }],
-                    [{ text: '🔙 Geri', callback_data: `admin_cat_${encodeURIComponent(category)}` }],
+                    [{ text: '✏️ Fiyatı Düzenle', callback_data: makeCallbackRef({ type: 'admin_edit_price', category, product: productName }) }],
+                    [{ text: '📝 Açıklamayı Düzenle', callback_data: makeCallbackRef({ type: 'admin_edit_desc', category, product: productName }) }],
+                    [{ text: '🗑 Ürünü Sil', callback_data: makeCallbackRef({ type: 'admin_delete', category, product: productName }) }],
+                    [{ text: '🔖 İkonu Düzenle', callback_data: makeCallbackRef({ type: 'admin_set_icon_prod', category, product: productName }) }],
+                    [{ text: '🔙 Geri', callback_data: makeCallbackRef({ type: 'admin_cat', category }) }],
                 ],
             },
         });
