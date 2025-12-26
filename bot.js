@@ -105,6 +105,9 @@ bot.onText(/\/admin/, (msg) => {
 bot.on("callback_query", (query) => {
     const chatId = query.from.id;
     const data = query.data;
+    console.log('callback_query from', chatId, 'data=', data);
+    // acknowledge callback to remove loading state
+    try { bot.answerCallbackQuery(query.id).catch(()=>{}); } catch (e) {}
     const products = loadProducts();
     // Admin callbacks
     if (data === 'admin_products' && chatId === ADMIN_ID) {
