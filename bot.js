@@ -24,6 +24,29 @@ let users = {};
 let userState = {};
 let adminState = {};
 
+// Icons: persisted in `icons.json`. Use defaults when file missing.
+const DEFAULT_ICONS = {
+    defaultCategory: '📁',
+    defaultProduct: '📦',
+    payments: '💸',
+};
+
+function loadIcons() {
+    try {
+        const p = path.join(__dirname, 'icons.json');
+        if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf-8'));
+    } catch (e) {}
+    return Object.assign({}, DEFAULT_ICONS);
+}
+
+function saveIcons(icons) {
+    try {
+        fs.writeFileSync(path.join(__dirname, 'icons.json'), JSON.stringify(icons, null, 2), 'utf-8');
+    } catch (e) {}
+}
+
+let ICONS = loadIcons();
+
 // simple HTML escaper for user-provided text
 function escapeHtml(text) {
     if (!text) return '';
@@ -48,8 +71,8 @@ bot.onText(/\/start/, (msg) => {
     const products = loadProducts();
     const categories = Object.keys(products);
 
-    const buttons = categories.map((cat) => [
-        { text: cat, callback_data: "cat_" + cat },
+        const buttons = categories.map((cat) => [
+        { text: `${ICONS[cat] || ICONS.defaultCategory} ${cat}`, callback_data: "cat_" + cat },
     ]);
     bot.sendMessage(chatId, "**Lütfen bir kategori seçin:**", {
         parse_mode: "Markdown",
@@ -87,7 +110,7 @@ bot.on("callback_query", (query) => {
     if (data === 'admin_products' && chatId === ADMIN_ID) {
         const categories = Object.keys(products);
         const buttons = categories.map((cat) => [
-            { text: cat, callback_data: `admin_cat_${encodeURIComponent(cat)}` },
+            { text: `${ICONS[cat] || ICONS.defaultCategory} ${cat}`, callback_data: `admin_cat_${encodeURIComponent(cat)}` },
         ]);
         return bot.sendMessage(chatId, "**Kategori seçin (düzenlemek için):**", {
             parse_mode: 'Markdown',
@@ -99,11 +122,17 @@ bot.on("callback_query", (query) => {
         const category = decodeURIComponent(data.substring(10));
         const prodNames = Object.keys(products[category] || {});
         const buttons = prodNames.map((p) => [
-            { text: p, callback_data: `admin_prod_${encodeURIComponent(category)}|${encodeURIComponent(p)}` },
+            { text: `${ICONS[`prod:${category}|${p}`] || ICONS.defaultProduct} ${p}`, callback_data: `admin_prod_${encodeURIComponent(category)}|${encodeURIComponent(p)}` },
         ]);
+        // Add an extra row to edit category icon
+        const keyboard = [
+            ...buttons,
+            [{ text: '🔖 İkonu Düzenle', callback_data: `admin_set_icon_cat|${encodeURIComponent(category)}` }],
+            [{ text: '🔙 Geri', callback_data: 'admin_products' }],
+        ];
         return bot.sendMessage(chatId, `**${category}** — Ürün seçin:`, {
             parse_mode: 'Markdown',
-            reply_markup: { inline_keyboard: [...buttons, [{ text: '🔙 Geri', callback_data: 'admin_products' }]] },
+            reply_markup: { inline_keyboard: keyboard },
         });
     }
 
@@ -120,6 +149,7 @@ bot.on("callback_query", (query) => {
                     [{ text: '✏️ Fiyatı Düzenle', callback_data: `admin_edit_price|${encodeURIComponent(category)}|${encodeURIComponent(productName)}` }],
                     [{ text: '📝 Açıklamayı Düzenle', callback_data: `admin_edit_desc|${encodeURIComponent(category)}|${encodeURIComponent(productName)}` }],
                     [{ text: '🗑 Ürünü Sil', callback_data: `admin_delete|${encodeURIComponent(category)}|${encodeURIComponent(productName)}` }],
+                    [{ text: '🔖 İkonu Düzenle', callback_data: `admin_set_icon_prod|${encodeURIComponent(category)}|${encodeURIComponent(productName)}` }],
                     [{ text: '🔙 Geri', callback_data: `admin_cat_${encodeURIComponent(category)}` }],
                 ],
             },
@@ -156,6 +186,23 @@ bot.on("callback_query", (query) => {
         return bot.sendMessage(chatId, 'Yeni ürün ekleme: Hangi kategoriye eklemek istiyorsunuz? (Kategori adı yazın)');
     }
 
+    // Admin: set category icon
+    if (data && data.startsWith('admin_set_icon_cat') && chatId === ADMIN_ID) {
+        const parts = data.split('|');
+        const category = decodeURIComponent(parts[1]);
+        adminState[chatId] = { action: 'set_icon', target: 'category', category };
+        return bot.sendMessage(chatId, `Lütfen *${category}* için kullanılacak emoji veya ikon karakterini gönderin (örnek: 🤖):`, { parse_mode: 'Markdown' });
+    }
+
+    // Admin: set product icon
+    if (data && data.startsWith('admin_set_icon_prod') && chatId === ADMIN_ID) {
+        const parts = data.split('|');
+        const category = decodeURIComponent(parts[1]);
+        const productName = decodeURIComponent(parts[2]);
+        adminState[chatId] = { action: 'set_icon', target: 'product', category, productName };
+        return bot.sendMessage(chatId, `Lütfen *${productName}* için kullanılacak emoji veya ikon karakterini gönderin (örnek: 📦):`, { parse_mode: 'Markdown' });
+    }
+
     if (data === 'admin_preview_menu' && chatId === ADMIN_ID) {
         // Build a simple preview of the main menu
         const categories = Object.keys(products);
@@ -189,7 +236,7 @@ bot.on("callback_query", (query) => {
 
         const buttons = subProducts.map((name) => [
             {
-                text: `📦 ${name}`,
+                text: `${ICONS.defaultProduct} ${name}`,
                 callback_data: `product_${name}`,
             },
         ]);
@@ -354,6 +401,24 @@ bot.on("message", (msg) => {
             saveProducts(products);
             delete adminState[chatId];
             return bot.sendMessage(chatId, `✅ *${state.productName}* için yeni fiyat ${value}₺ olarak kaydedildi.`, { parse_mode: 'Markdown' });
+        }
+
+        if (state.action === 'set_icon') {
+            const text = (msg.text || '').trim();
+            if (!text) return bot.sendMessage(chatId, 'Geçersiz ikon. Lütfen bir emoji veya kısa karakter girin.');
+            if (state.target === 'category') {
+                ICONS[state.category] = text;
+                saveIcons(ICONS);
+                delete adminState[chatId];
+                return bot.sendMessage(chatId, `✅ *${state.category}* için ikon olarak ${text} ayarlandı.`, { parse_mode: 'Markdown' });
+            }
+            if (state.target === 'product') {
+                const key = `prod:${state.category}|${state.productName}`;
+                ICONS[key] = text;
+                saveIcons(ICONS);
+                delete adminState[chatId];
+                return bot.sendMessage(chatId, `✅ *${state.productName}* için ikon olarak ${text} ayarlandı.`, { parse_mode: 'Markdown' });
+            }
         }
 
         if (state.action === 'edit_desc') {
