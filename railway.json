@@ -1,0 +1,11 @@
+{
+  "services": [
+    {
+      "name": "bestbot-service",
+      "startCommand": "npm start",
+      "build": {
+        "dockerfilePath": "./Dockerfile"
+      }
+    }
+  ]
+}
