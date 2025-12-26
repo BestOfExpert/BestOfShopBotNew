@@ -24,6 +24,17 @@ let users = {};
 let userState = {};
 let adminState = {};
 
+// simple HTML escaper for user-provided text
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function saveProducts(products) {
     fs.writeFileSync("./products.json", JSON.stringify(products, null, 2));
 }
@@ -214,11 +225,13 @@ bot.on("callback_query", (query) => {
             ? fs.readFileSync(descPath, "utf-8")
             : "Açıklama bulunamadı.";
 
+        const productMsg = `<b>Ürün:</b> ${escapeHtml(productName)}\n\n<b>Özellikler:</b>\n\n${escapeHtml(description)}\n\n💵 <b>Fiyat: ${price}₺</b>\n\n<b>Ödeme yöntemini seçin:</b>`;
+
         bot.sendMessage(
             chatId,
-            `**Ürün:** ${productName}\n\n**Özellikler:**\n\n${description}\n\n💵 **Fiyat: ${price}₺**\n\n**Ödeme yöntemini seçin:**`,
+            productMsg,
             {
-                parse_mode: "Markdown",
+                parse_mode: "HTML",
                 reply_markup: {
                     inline_keyboard: [
                         [
