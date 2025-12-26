@@ -1,0 +1,245 @@
+{
+  "Mobile Legends Android": {
+    "Cyrax Mod Haftalık - 400 TL": {
+      "price": 400,
+      "stock": ["cyrax hafta1", "cyrax hafta2", "cyrax hafta3"]
+    },
+    "Cyrax Mod Aylık - 725 TL": {
+      "price": 725,
+      "stock": ["cyrax ay1", "cyrax ay2"]
+    },
+    "TheBestML FULL Sürüm + İMGUİ Hafta - 400 TL": {
+      "price": 400,
+      "stock": ["thebesthafta1", "thebesthafta3", "thebesthafta4"]
+    },
+    "TheBestML FULL Sürüm + İMGUİ Aylık - 750 TL": {
+      "price": 750,
+      "stock": ["thebesthafta1", "thebesthafta3", "thebesthafta4"]
+    },
+    "TheBestML Haftalık - 250 TL": {
+      "price": 250,
+      "stock": ["thebesthafta1", "thebesthafta3", "thebesthafta4"]
+    },
+    "TheBestML Aylık - 550 TL": {
+      "price": 550,
+      "stock": ["thebestAY1", "thebestAY2"]
+    }
+  },
+  "Mobile Legends İOS Mod": {
+    "Flue Haftalık - 550 TL": {
+      "price": 550,
+      "stock": ["FLUE1", "FLUE1"]
+    },
+    "Flue Aylık - 850 TL": {
+      "price": 850,
+      "stock": ["FLUE1"]
+    },
+    "Gbox İpa Kurulum Mağaza - 550 TL": {
+      "price": 550,
+      "stock": [
+        "Gbox-KEY1-Admine Bu Kodu Gönder @BestOfExpert",
+        "Gbox-KEY2-Admine Bu Kodu Gönder @BestOfExpert",
+        "Gbox-KEY3-Admine Bu Kodu Gönder @BestOfExpert",
+        "Gbox-KEY4-Admine Bu Kodu Gönder @BestOfExpert",
+        "Gbox-KEY5-Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    }
+  },
+  "8 Ball Pool Mod": {
+    "Ak Mod En İyi Haftalık - 575 TL": {
+      "price": 575,
+      "stock": [
+        "AKHAFTA-KEY1-Admine Bu Kodu Gönder @BestOfExpert",
+        "AKHAFTA-KEY2-Admine Bu Kodu Gönder @BestOfExpert",
+        "AKHAFTA-KEY3-Admine Bu Kodu Gönder @BestOfExpert",
+        "AKHAFTA-KEY4-Admine Bu Kodu Gönder @BestOfExpert",
+        "AKHAFTA-KEY5-Admine Bu Kodu Gönder @BestOfExpert",
+        "AKHAFTA-KEY6-Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    },
+    "Ak Mod En İyi Aylık - 1375 TL": {
+      "price": 1375,
+      "stock": [
+        "AK-AY-KEY1-Admine Bu Kodu Gönder @BestOfExpert",
+        "AK-AY-KEY2-Admine Bu Kodu Gönder @BestOfExpert",
+        "AK-AY-KEY3-Admine Bu Kodu Gönder @BestOfExpert",
+        "AK-AY-KEY4-Admine Bu Kodu Gönder @BestOfExpert",
+        "AK-AY-KEY5-Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    },
+    "PSH4X Aylık - 900 TL": {
+      "price": 900,
+      "stock": [
+        "PSH4X-KEY1-Admine Bu Kodu Gönder @BestOfExpert",
+        "PSH4X-KEY2-Admine Bu Kodu Gönder @BestOfExpert",
+        "PSH4X-KEY3-Admine Bu Kodu Gönder @BestOfExpert",
+        "PSH4X-KEY4-Admine Bu Kodu Gönder @BestOfExpert",
+        "PSH4X-KEY5-Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    },
+    "İphone İOS Mod Haftalık - 500 TL": {
+      "price": 500,
+      "stock": [
+        "8BP-İOSHAFTA1-Admine Bu Kodu Gönder @BestOfExpert",
+        "8BP-İOSHAFTA2-Admine Bu Kodu Gönder @BestOfExpert",
+        "8BP-İOSHAFTA3-Admine Bu Kodu Gönder @BestOfExpert",
+        "8BP-İOSHAFTA4-Admine Bu Kodu Gönder @BestOfExpert",
+        "8BP-İOSHAFTA5-Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    },
+    "İphone İOS Mod Aylık - 900 TL": {
+      "price": 900,
+      "stock": [
+        "8BP-İOSAY1-Admine Bu Kodu Gönder @BestOfExpert",
+        "8BP-İOSAY2-Admine Bu Kodu Gönder @BestOfExpert",
+        "8BP-İOSAY3-Admine Bu Kodu Gönder @BestOfExpert",
+        "8BP-İOSAY4-Admine Bu Kodu Gönder @BestOfExpert",
+        "8BP-İOSAY5-Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    }
+  },
+  "Pubg Mobile Android": {
+    "Shield Plus Rootsuz Haftalık - 500 TL": {
+      "price": 500,
+      "stock": ["AndPubgHafta-KEY1", "AndPubgHafta-KEY2", "AndPubgHafta-KEY3"]
+    },
+    "Shield Plus Mod Rootsuz Aylık - 875 TL": {
+      "price": 875,
+      "stock": [
+        "AndPubgAy-KEY1",
+        "AndPubgAy-KEY2",
+        "AndPubgAy-KEY3",
+        "AndPubgAy-KEY4"
+      ]
+    },
+    "Cheat Ninja Rootlu Aylık - 1200 TL": {
+      "price": 1200,
+      "stock": ["Sharp-KEY1", "Sharp-KEY2"]
+    },
+    "Kernel Rootlu Aylık - 1250 TL": {
+      "price": 1250,
+      "stock": ["Kernel-KEY1", "Kernel-KEY2"]
+    }
+  },
+  "Pubg Mobile İOS": {
+    "Star İOS No JB Hafta - 450 TL": {
+      "price": 450,
+      "stock": [
+        "StarHafta1-Admine Bu Kodu Gönder @BestOfExpert",
+        "StarHafta2-Admine Bu Kodu Gönder @BestOfExpert",
+        "StarHafta3-Admine Bu Kodu Gönder @BestOfExpert",
+        "StarHafta4-Admine Bu Kodu Gönder @BestOfExpert",
+        "StarHafta5-Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    },
+    "Star İOS No JB Aylık - 850 TL": {
+      "price": 850,
+      "stock": [
+        "StarAy100-Admine Bu Kodu Gönder @BestOfExpert",
+        "StarAy101-Admine Bu Kodu Gönder @BestOfExpert",
+        "StarAy102-Admine Bu Kodu Gönder @BestOfExpert",
+        "StarAy103-Admine Bu Kodu Gönder @BestOfExpert",
+        "StarAy104-Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    }
+  },
+  "Pubg Mobile Emülatör": {
+    "KİNG Bypass Aylık- 1200 TL": {
+      "price": 1200,
+      "stock": ["KingEmuAY1 - Admine Bu Kodu Gönder @BestOfExpert"]
+    }
+  },
+  "WildRift Mod": {
+    "Android Haftalık - 650 TL": {
+      "price": 650,
+      "stock": ["Wild247DAY1e5xxoh5"]
+    },
+    "Android Aylık - 1200 TL": {
+      "price": 1200,
+      "stock": ["Wild2430DAYH56eSlOF"]
+    },
+    "İOS Haftalık - 650 TL": {
+      "price": 650,
+      "stock": ["Wild24-7day-hXOLI2QxBMNJmzG"]
+    },
+    "İOS Aylık - 1200 TL": {
+      "price": 1200,
+      "stock": ["Wild24-30day-faQxSAijBlhnZyz"]
+    }
+  },
+  "Standoff 2": {
+    "St2 Android(Rootlu) & Emülatör Haftalık - 400 TL": {
+      "price": 400,
+      "stock": [
+        "st2 Hafta1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "st2 Hafta2 - Admine Bu Kodu Gönder @BestOfExpert",
+        "st2 Hafta3 - Admine Bu Kodu Gönder @BestOfExpert",
+        "st2 Hafta4 - Admine Bu Kodu Gönder @BestOfExpert",
+        "st2 Hafta5 - Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    },
+    "St2 Android(Rootlu) & Emülatör Aylık - 750 TL": {
+      "price": 750,
+      "stock": [
+        "st2 Ay1 - Admine Bu Kodu Gönder @BestOfExpert",
+        "st2 Ay2 - Admine Bu Kodu Gönder @BestOfExpert",
+        "st2 Ay3 - Admine Bu Kodu Gönder @BestOfExpert",
+        "st2 Ay4 - Admine Bu Kodu Gönder @BestOfExpert",
+        "st2 Ay5 - Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    }
+  },
+  "Gbox İpa Mağaza İOS": {
+    "Gbox Mağaza - 550 TL": {
+      "price": 550,
+      "stock": [
+        "GBOX1-Admine Bu Kodu Gönder @BestOfExpert",
+        "GBOX2-Admine Bu Kodu Gönder @BestOfExpert",
+        "GBOX3-Admine Bu Kodu Gönder @BestOfExpert",
+        "GBOX4-Admine Bu Kodu Gönder @BestOfExpert",
+        "GBOX5-Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    }
+  },
+  "Delta Force IOS Android": {
+    "Delta Force İOS Hafta - 600 TL": {
+      "price": 600,
+      "stock": [
+        "DELTAİOSHafta1-Admine Bu Kodu Gönder @BestOfExpert",
+        "DELTAİOSHafta2-Admine Bu Kodu Gönder @BestOfExpert",
+        "DELTAİOSHafta3-Admine Bu Kodu Gönder @BestOfExpert",
+        "DELTAİOSHafta4-Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    },
+    "Delta Force İOS Ay - 1100 TL": {
+      "price": 1100,
+      "stock": [
+        "DELTAİOSAy1-Admine Bu Kodu Gönder @BestOfExpert",
+        "DELTAİOSAy2-Admine Bu Kodu Gönder @BestOfExpert",
+        "DELTAİOSAy3-Admine Bu Kodu Gönder @BestOfExpert",
+        "DELTAİOSAy4-Admine Bu Kodu Gönder @BestOfExpert",
+        "DELTAİOSAy5-Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    },
+    "Delta Force Android Haftalık - 550 TL": {
+      "price": 550,
+      "stock": [
+        "DELTAAndrHafta1-Admine Bu Kodu Gönder @BestOfExpert",
+        "DELTAAndrHafta2-Admine Bu Kodu Gönder @BestOfExpert",
+        "DELTAAndrHafta3-Admine Bu Kodu Gönder @BestOfExpert",
+        "DELTAAndrHafta4-Admine Bu Kodu Gönder @BestOfExpert",
+        "DELTAAndrHafta5-Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    },
+    "Delta Force Android Aylık - 1000 TL": {
+      "price": 1000,
+      "stock": [
+        "DELTAAndrAy1-Admine Bu Kodu Gönder @BestOfExpert",
+        "DELTAAndrAy2-Admine Bu Kodu Gönder @BestOfExpert",
+        "DELTAAndrAy3-Admine Bu Kodu Gönder @BestOfExpert",
+        "DELTAAndrAy4-Admine Bu Kodu Gönder @BestOfExpert",
+        "DELTAAndrAy5 - Admine Bu Kodu Gönder @BestOfExpert"
+      ]
+    }
+  }
+}
