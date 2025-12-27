@@ -461,6 +461,20 @@ Açıklama: \`Tron TRC20 USDT Adresidir. Farklı ağ veya Crypto ile ödeme yap�
             `✅ Onay veriliyor: *${sel.product}*\n\nLütfen anahtarı ve süresini (gün) şu formatta girin:\n\n\`anahtar süre\`\n\nÖrnek: \`THE_BEST_KEY123 30\`\n\n(30 = 30 gün geçerli)`,
             { parse_mode: 'Markdown' }
         );
+    } else if (data.startsWith("reject_")) {
+        const userId = data.split("_")[1];
+        const sel = users[userId];
+        if (!sel) return;
+
+        // Notify user about rejection
+        bot.sendMessage(
+            userId,
+            `❌ **Ödemeniz reddedildi.**\n\nDekontunuz geçersiz veya hatalı bulundu. Lütfen doğru dekontu gönderin veya destek için iletişime geçin.`,
+            { parse_mode: 'Markdown' }
+        );
+
+        bot.sendMessage(chatId, `❌ Kullanıcı *${userId}* için sipariş reddedildi.`, { parse_mode: 'Markdown' });
+        delete users[userId];
     }
 });
 
@@ -614,24 +628,30 @@ bot.on("message", (msg) => {
 
     // Existing flow: forward payment receipts/photos to admin
     if ((msg.document || msg.photo) && sel) {
-        bot.forwardMessage(ADMIN_ID, chatId, msg.message_id);
-        bot.sendMessage(
-            ADMIN_ID,
-            `🛒 Kullanıcı *${chatId}* '${sel.product}' için ödeme yaptı. Onaylıyor musunuz?`,
-            {
-                parse_mode: "Markdown",
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            {
-                                text: "✅ Onayla",
-                                callback_data: `approve_${chatId}`,
-                            },
+        bot.forwardMessage(ADMIN_ID, chatId, msg.message_id).then((forwardedMsg) => {
+            bot.sendMessage(
+                ADMIN_ID,
+                `🛒 Kullanıcı *${chatId}* '*${sel.product}*' için ödeme yaptı.\n\n💰 Fiyat: ${products[sel.category]?.[sel.product]?.price || '?'}₺\n\nOnaylıyor musunuz?`,
+                {
+                    parse_mode: "Markdown",
+                    reply_to_message_id: forwardedMsg.message_id,
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: "✅ Onayla",
+                                    callback_data: `approve_${chatId}`,
+                                },
+                                {
+                                    text: "❌ Reddet",
+                                    callback_data: `reject_${chatId}`,
+                                },
+                            ],
                         ],
-                    ],
+                    },
                 },
-            },
-        );
+            );
+        }).catch(() => {});
         bot.sendMessage(
             chatId,
             "**Dekontunuz alındı. Kontrol Edildikten Ve Admin onayından sonra ürününüz teslim edilecektir.Yoğunluğa Göre Süre Uzayabilir.Lütfen Bekleyiniz.Teşekkür Ederiz**",
