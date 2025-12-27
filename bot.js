@@ -546,8 +546,7 @@ bot.on("callback_query", (query) => {
 │  \`88295280440\`
 │
 │  👤 **Alıcı Adı:**
-│  \`Moka United Ödeme ve Elektronik\`
-│  \`Para Kuruluşu A.Ş.\`
+│  \`Moka United Ödeme ve Elektronik Para Kuruluşu A.Ş.\`
 └─────────────────────────────┘
 
 ⚠️ **ÖNEMLİ:** Açıklamaya \`88295280440\` yazmayı unutmayın! Yazmazsanız ödeme bize ulaşmaz.
