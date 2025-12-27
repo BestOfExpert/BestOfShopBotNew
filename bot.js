@@ -946,7 +946,12 @@ bot.on("message", (msg) => {
             }
             
             const key = parts[0];
-            const days = parseInt(parts[1]) || state.days;
+            const days = parseInt(parts[1]);
+            
+            if (isNaN(days) || days <= 0) {
+                return bot.sendMessage(chatId, `⚠️ Geçersiz süre! Süre pozitif bir sayı olmalı.\n\n📝 **Format:** \`anahtar süre\`\n📌 **Örnek:** \`the_best1 7\``, { parse_mode: 'Markdown' });
+            }
+            
             const expiresAt = Date.now() + days * 24 * 60 * 60 * 1000;
             const orderId = `${userId}_${Date.now()}`;
             
@@ -961,6 +966,8 @@ bot.on("message", (msg) => {
             saveKeys(activeKeys);
             
             const expiryDate = new Date(expiresAt).toLocaleDateString('tr-TR');
+            
+            // Müşteriye mesaj gönder
             bot.sendMessage(userId, `✅ **Ödemeniz Onaylandı!**
 
 🔑 **Ürün Anahtarınız:**
@@ -974,8 +981,16 @@ bot.on("message", (msg) => {
 📥 **Kurulum Dosyaları İçin:**
 Satın aldığınız anahtar ile ${GROUP_LINK} botuna gidip anahtarınızı girerek kurulum dosyalarını indirebilirsiniz.
 
-🙏 Bizi tercih ettiğiniz için teşekkür ederiz!`, { parse_mode: 'Markdown' });
+🙏 Bizi tercih ettiğiniz için teşekkür ederiz!`, { parse_mode: 'Markdown' })
+            .then(() => {
+                console.log(`✅ Müşteriye mesaj gönderildi: ${userId}`);
+            })
+            .catch((err) => {
+                console.log(`❌ Müşteriye mesaj gönderilemedi: ${userId}`, err.message);
+                bot.sendMessage(chatId, `⚠️ Müşteriye mesaj gönderilemedi! Hata: ${err.message}`);
+            });
             
+            // Admin'e onay mesajı
             bot.sendMessage(chatId, `✅ **Anahtar Gönderildi!**
 
 👤 Kullanıcı: \`${userId}\`
@@ -984,6 +999,7 @@ Satın aldığınız anahtar ile ${GROUP_LINK} botuna gidip anahtarınızı gire
 📅 Süre: **${days} gün**
 
 ✨ Müşteriye bildirim gönderildi.`, { parse_mode: 'Markdown' });
+            
             delete adminState[chatId];
             delete userState[userId];
             return;
