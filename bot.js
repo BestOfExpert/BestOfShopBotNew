@@ -876,13 +876,40 @@ if (filesBot) {
         return false;
     }
 
-    // Menü oluştur
+    // Anahtar bilgisini getir
+    function getKeyInfo(key) {
+        for (const orderId in activeKeys) {
+            const entry = activeKeys[orderId];
+            if (entry.key === key && entry.expiresAt > Date.now()) {
+                return entry;
+            }
+        }
+        return null;
+    }
+
+    // Menü oluştur - Shop bot'un products.json'undan al
     function getFilesDynamicMenu() {
-        const products = Array.from(filesProductUploads.keys());
+        const shopProducts = loadProducts();
+        const allProducts = [];
+        
+        // Tüm kategorilerdeki ürünleri topla
+        for (const category in shopProducts) {
+            for (const productName in shopProducts[category]) {
+                allProducts.push(productName);
+            }
+        }
+        
+        // Files bot'a özel ürünler varsa onları da ekle
+        for (const name of filesProductUploads.keys()) {
+            if (!allProducts.includes(name)) {
+                allProducts.push(name);
+            }
+        }
+        
         const keyboard = [];
-        for (let i = 0; i < products.length; i += 2) {
-            const row = [products[i]];
-            if (products[i + 1]) row.push(products[i + 1]);
+        for (let i = 0; i < allProducts.length; i += 2) {
+            const row = [allProducts[i]];
+            if (allProducts[i + 1]) row.push(allProducts[i + 1]);
             keyboard.push(row);
         }
         return {
@@ -919,31 +946,75 @@ if (filesBot) {
             return;
         }
 
-        // Ürün seçimi
-        if (session && session.step === 'validated' && text && filesProductUploads.has(text)) {
-            const product = filesProductUploads.get(text);
+        // Ürün seçimi - Shop bot ürünleri veya Files bot ürünleri
+        if (session && session.step === 'validated' && text && !text.startsWith('/')) {
+            // Önce Files bot'a özel ürünlerde ara
+            if (filesProductUploads.has(text)) {
+                const product = filesProductUploads.get(text);
 
-            if (product.description) {
-                if (typeof product.description === 'string') {
-                    filesSendAndDelete('sendMessage', chatId, product.description);
-                } else if (product.description.type === 'photo') {
-                    filesSendAndDelete('sendPhoto', chatId, product.description.file_id, {
-                        caption: product.description.caption
+                if (product.description) {
+                    if (typeof product.description === 'string') {
+                        filesSendAndDelete('sendMessage', chatId, product.description);
+                    } else if (product.description.type === 'photo') {
+                        filesSendAndDelete('sendPhoto', chatId, product.description.file_id, {
+                            caption: product.description.caption
+                        });
+                    }
+                }
+
+                if (product.files && product.files.length > 0) {
+                    product.files.forEach(file => {
+                        if (file.type === 'document') {
+                            filesSendAndDelete('sendDocument', chatId, file.file_id);
+                        } else if (file.type === 'video') {
+                            filesSendAndDelete('sendVideo', chatId, file.file_id);
+                        } else if (file.type === 'photo') {
+                            filesSendAndDelete('sendPhoto', chatId, file.file_id);
+                        }
                     });
+                } else {
+                    filesSendAndDelete('sendMessage', chatId, '📁 Bu ürün için henüz dosya eklenmemiş.\n\nAdmin tarafından dosya eklenmesini bekleyin.');
+                }
+                return;
+            }
+
+            // Shop bot ürünlerinde ara
+            const shopProducts = loadProducts();
+            let foundProduct = null;
+            let foundCategory = null;
+            for (const category in shopProducts) {
+                if (shopProducts[category][text]) {
+                    foundProduct = text;
+                    foundCategory = category;
+                    break;
                 }
             }
 
-            if (product.files) {
-                product.files.forEach(file => {
-                    if (file.type === 'document') {
-                        filesSendAndDelete('sendDocument', chatId, file.file_id);
-                    } else if (file.type === 'video') {
-                        filesSendAndDelete('sendVideo', chatId, file.file_id);
-                    } else if (file.type === 'photo') {
-                        filesSendAndDelete('sendPhoto', chatId, file.file_id);
+            if (foundProduct) {
+                // Files bot'ta bu ürün için dosya var mı kontrol et
+                if (filesProductUploads.has(foundProduct)) {
+                    const product = filesProductUploads.get(foundProduct);
+                    if (product.files && product.files.length > 0) {
+                        product.files.forEach(file => {
+                            if (file.type === 'document') {
+                                filesSendAndDelete('sendDocument', chatId, file.file_id);
+                            } else if (file.type === 'video') {
+                                filesSendAndDelete('sendVideo', chatId, file.file_id);
+                            } else if (file.type === 'photo') {
+                                filesSendAndDelete('sendPhoto', chatId, file.file_id);
+                            }
+                        });
+                        return;
                     }
-                });
+                }
+                // Dosya yoksa bilgi ver
+                filesSendAndDelete('sendMessage', chatId, `📦 *${foundProduct}*\n\n📁 Bu ürün için henüz dosya eklenmemiş.\n\nAdmin Files bot'tan \`/ekle ${foundProduct}\` komutuyla dosya ekleyebilir.`, { parse_mode: 'Markdown' });
+                return;
             }
+
+            // Ürün bulunamadı
+            const menu = getFilesDynamicMenu();
+            filesSendAndDelete('sendMessage', chatId, '❌ Ürün bulunamadı. Lütfen menüden seçin.', menu);
         }
     });
 
