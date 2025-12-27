@@ -463,6 +463,8 @@ Yapmak istediğiniz işlemi seçin:`;
                 [{ text: "📁 Kategorileri Yönet", callback_data: "admin_categories" }],
                 [{ text: "📦 Ürünleri Yönet", callback_data: "admin_products" }],
                 [{ text: "➕ Yeni Ürün Ekle", callback_data: "admin_add_product" }],
+                [{ text: "🔗 Ürün Eşleştir", callback_data: "admin_mapping" }],
+                [{ text: "📱 UDID Aldırma", callback_data: "admin_udid_menu" }],
                 [{ text: "⏱ Süre Seçenekleri", callback_data: "admin_durations" }],
                 [{ text: "💳 Ödeme Ayarları", callback_data: "admin_payment" }],
                 [{ text: "🔑 Anahtarlar", callback_data: "admin_keys" }],
@@ -608,6 +610,224 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
     // Yeni ürün ekle
     if (data === "admin_add_product") {
         return startAddProduct(chatId);
+    }
+    
+    // ========== ÜRÜN EŞLEŞTİRME (Shop Bot -> Files Bot) ==========
+    if (data === "admin_mapping") {
+        return showAdminMapping(chatId, messageId);
+    }
+    
+    // Eşleştirme için Shop ürünü seç
+    if (data.startsWith("admin_map_shop_")) {
+        const productKey = data.substring(15);
+        const prodData = loadProducts();
+        const product = prodData.products[productKey];
+        
+        if (!product) {
+            return bot.sendMessage(chatId, "❌ Ürün bulunamadı.");
+        }
+        
+        adminState[chatId] = { action: 'mapping', shopProduct: productKey, shopProductName: product.name };
+        
+        // Files menülerini göster
+        const filesMenus = Array.from(filesProductUploads?.keys() || []);
+        if (filesMenus.length === 0) {
+            return bot.sendMessage(chatId, "❌ Files Bot'ta henüz menü yok.", {
+                reply_markup: { inline_keyboard: [[{ text: "🔙 Geri", callback_data: "admin_mapping" }]] }
+            });
+        }
+        
+        const buttons = filesMenus.map(menu => [{
+            text: `📁 ${menu}`,
+            callback_data: `admin_map_files_${menu.substring(0, 20)}`
+        }]);
+        buttons.push([{ text: "🔙 Geri", callback_data: "admin_mapping" }]);
+        
+        return bot.sendMessage(chatId, `🔗 **Ürün Eşleştirme**\n\n📦 Shop Ürün: **${product.name}**\n\nFiles Bot menüsü seçin:`, {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: buttons }
+        });
+    }
+    
+    // Eşleştirme için Files menüsü seç
+    if (data.startsWith("admin_map_files_")) {
+        const filesMenuShort = data.substring(16);
+        const state = adminState[chatId];
+        
+        if (!state || state.action !== 'mapping') {
+            return bot.sendMessage(chatId, "❌ Önce Shop ürünü seçin.");
+        }
+        
+        // Tam menü adını bul
+        let filesMenu = null;
+        for (const menu of filesProductUploads?.keys() || []) {
+            if (menu.startsWith(filesMenuShort)) {
+                filesMenu = menu;
+                break;
+            }
+        }
+        
+        if (!filesMenu) {
+            return bot.sendMessage(chatId, "❌ Menü bulunamadı.");
+        }
+        
+        // Eşleştirmeyi kaydet
+        if (!productMapping[state.shopProductName]) {
+            productMapping[state.shopProductName] = [];
+        }
+        if (!productMapping[state.shopProductName].includes(filesMenu)) {
+            productMapping[state.shopProductName].push(filesMenu);
+        }
+        saveProductMapping();
+        
+        bot.sendMessage(chatId, `✅ **Eşleştirme Kaydedildi!**\n\n📦 ${state.shopProductName}\n↓\n📁 ${filesMenu}`, { parse_mode: 'Markdown' });
+        delete adminState[chatId];
+        return showAdminMapping(chatId);
+    }
+    
+    // Eşleştirme sil
+    if (data.startsWith("admin_unmap_")) {
+        const shopProduct = data.substring(12);
+        
+        // Tam ürün adını bul
+        let fullName = null;
+        for (const name in productMapping) {
+            if (name.startsWith(shopProduct) || name.toLowerCase().includes(shopProduct.toLowerCase())) {
+                fullName = name;
+                break;
+            }
+        }
+        
+        if (fullName && productMapping[fullName]) {
+            delete productMapping[fullName];
+            saveProductMapping();
+            bot.sendMessage(chatId, `🗑 **${fullName}** eşleştirmesi silindi.`, { parse_mode: 'Markdown' });
+        }
+        return showAdminMapping(chatId);
+    }
+    
+    // ========== UDID ALDIRMA ==========
+    if (data === "admin_udid_menu") {
+        return showAdminUdidMenu(chatId, messageId);
+    }
+    
+    // UDID menü yönetimi
+    if (data === "admin_udid_manage") {
+        const menus = Array.from(filesProductUploads?.keys() || []);
+        if (menus.length === 0) {
+            return bot.sendMessage(chatId, "❌ Files Bot'ta henüz menü yok.", {
+                reply_markup: { inline_keyboard: [[{ text: "🔙 Geri", callback_data: "admin_udid_menu" }]] }
+            });
+        }
+        
+        const buttons = menus.map(name => {
+            const hasUdid = udidMapping[name] === true;
+            const icon = hasUdid ? '✅' : '❌';
+            return [{ text: `${icon} ${name.substring(0, 28)}`, callback_data: `admin_udid_toggle_${name.substring(0, 20)}` }];
+        });
+        buttons.push([{ text: '🔙 Geri', callback_data: 'admin_udid_menu' }]);
+        
+        return bot.sendMessage(chatId, `📱 **UDID Aldırma Yönetimi**\n\n✅ = UDID/Fcode butonu aktif\n❌ = UDID/Fcode butonu pasif\n\nAçmak/kapatmak için tıklayın:`, {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: buttons }
+        });
+    }
+    
+    // UDID toggle
+    if (data.startsWith("admin_udid_toggle_")) {
+        const menuShort = data.substring(18);
+        
+        // Tam menü adını bul
+        let menuName = null;
+        for (const name of filesProductUploads?.keys() || []) {
+            if (name.startsWith(menuShort)) {
+                menuName = name;
+                break;
+            }
+        }
+        
+        if (menuName) {
+            udidMapping[menuName] = !udidMapping[menuName];
+            saveUdidMapping();
+            const status = udidMapping[menuName] ? 'AKTİF ✅' : 'PASİF ❌';
+            bot.sendMessage(chatId, `📱 **${menuName}**\n\nFcode butonu: **${status}**`, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: [[{ text: '🔙 Menülere Dön', callback_data: 'admin_udid_manage' }]] }
+            });
+        }
+        return;
+    }
+    
+    // Bekleyen Fcode talepleri
+    if (data === "admin_udid_pending") {
+        const pending = Object.entries(pendingFcode || {});
+        if (pending.length === 0) {
+            return bot.sendMessage(chatId, "📭 Bekleyen Fcode talebi yok.", {
+                reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'admin_udid_menu' }]] }
+            });
+        }
+        
+        const buttons = pending.map(([odId, info]) => {
+            const shortFcode = info.fcode?.substring(0, 15) || 'N/A';
+            return [{ text: `📱 ${shortFcode}`, callback_data: `admin_fcode_view_${odId}` }];
+        });
+        buttons.push([{ text: '🔙 Geri', callback_data: 'admin_udid_menu' }]);
+        
+        return bot.sendMessage(chatId, `⏳ **Bekleyen Fcode Talepleri** (${pending.length})`, {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: buttons }
+        });
+    }
+    
+    // Fcode detay görüntüle
+    if (data.startsWith("admin_fcode_view_")) {
+        const odId = data.substring(17);
+        const info = pendingFcode?.[odId];
+        if (!info) {
+            return bot.sendMessage(chatId, "❌ Talep bulunamadı.", {
+                reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'admin_udid_pending' }]] }
+            });
+        }
+        
+        return bot.sendMessage(chatId, `📱 **Fcode Detayı**\n\n👤 Kullanıcı: \`${info.chatId}\`\n📦 Menü: ${info.menu}\n📝 Fcode: \`${info.fcode}\`\n⏰ Tarih: ${new Date(info.createdAt).toLocaleString('tr-TR')}`, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '✅ Onayla & UDID Gönder', callback_data: `admin_fcode_approve_${odId}` }],
+                    [{ text: '❌ Reddet', callback_data: `admin_fcode_reject_${odId}` }],
+                    [{ text: '🔙 Geri', callback_data: 'admin_udid_pending' }]
+                ]
+            }
+        });
+    }
+    
+    // Fcode onayla
+    if (data.startsWith("admin_fcode_approve_")) {
+        const odId = data.substring(20);
+        const info = pendingFcode?.[odId];
+        if (!info) {
+            return bot.sendMessage(chatId, "❌ Talep bulunamadı.");
+        }
+        
+        adminState[chatId] = { action: 'send_udid', orderId: odId, fcodeInfo: info };
+        return bot.sendMessage(chatId, `📱 **UDID Gönder**\n\n👤 Kullanıcı: \`${info.chatId}\`\n📝 Fcode: \`${info.fcode}\`\n\nLütfen UDID'yi yazın:`, {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: [[{ text: '🔙 İptal', callback_data: 'admin_udid_pending' }]] }
+        });
+    }
+    
+    // Fcode reddet
+    if (data.startsWith("admin_fcode_reject_")) {
+        const odId = data.substring(19);
+        const info = pendingFcode?.[odId];
+        if (info) {
+            // Kullanıcıya bildir
+            filesBot?.sendMessage(info.chatId, `❌ **Fcode Reddedildi**\n\nGönderdiğiniz Fcode reddedildi. Lütfen doğru Fcode gönderdiğinizden emin olun.`, { parse_mode: 'Markdown' }).catch(() => {});
+            delete pendingFcode[odId];
+            savePendingFcode();
+            bot.sendMessage(chatId, "🗑 Talep reddedildi ve kullanıcıya bildirildi.");
+        }
+        return showAdminUdidMenu(chatId);
     }
     
     // Süre seçenekleri
@@ -1382,6 +1602,77 @@ function showAdminKeys(chatId, messageId = null) {
     }
 }
 
+// ========== ÜRÜN EŞLEŞTİRME FONKSİYONU ==========
+function showAdminMapping(chatId, messageId = null) {
+    const prodData = loadProducts();
+    const products = prodData.products || {};
+    const mappings = Object.entries(productMapping || {});
+    
+    let text = `🔗 **Ürün Eşleştirme**\n\nShop Bot ürünlerini Files Bot menüleriyle eşleştirin.\n\n`;
+    
+    if (mappings.length > 0) {
+        text += `**Mevcut Eşleştirmeler:**\n`;
+        mappings.forEach(([shop, files]) => {
+            text += `📦 ${shop}\n   ↓ ${files.join(', ')}\n`;
+        });
+    } else {
+        text += `_Henüz eşleştirme yok._\n`;
+    }
+    
+    // Shop ürünleri butonları
+    const buttons = Object.entries(products).map(([key, prod]) => [{
+        text: `📦 ${prod.name.substring(0, 25)}`,
+        callback_data: `admin_map_shop_${key.substring(0, 15)}`
+    }]);
+    
+    // Mevcut eşleştirmeleri silme butonları
+    if (mappings.length > 0) {
+        buttons.push([{ text: "🗑 Eşleştirme Sil", callback_data: "admin_unmap_list" }]);
+    }
+    
+    buttons.push([{ text: "🔙 Geri", callback_data: "admin_back" }]);
+    
+    const opts = {
+        parse_mode: "Markdown",
+        reply_markup: { inline_keyboard: buttons }
+    };
+    
+    if (messageId) {
+        bot.editMessageText(text, { chat_id: chatId, message_id: messageId, ...opts }).catch(() => {
+            bot.sendMessage(chatId, text, opts);
+        });
+    } else {
+        bot.sendMessage(chatId, text, opts);
+    }
+}
+
+// ========== UDID ALDIRMA MENÜSÜ ==========
+function showAdminUdidMenu(chatId, messageId = null) {
+    const pendingCount = Object.keys(pendingFcode || {}).length;
+    const udidEnabledCount = Object.values(udidMapping || {}).filter(v => v === true).length;
+    
+    const text = `📱 **UDID Aldırma Yönetimi**\n\n📊 UDID Aktif Menü: ${udidEnabledCount}\n⏳ Bekleyen Talep: ${pendingCount}`;
+    
+    const opts = {
+        parse_mode: "Markdown",
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: "📦 Menüleri Yönet", callback_data: "admin_udid_manage" }],
+                [{ text: "⏳ Bekleyen Talepler", callback_data: "admin_udid_pending" }],
+                [{ text: "🔙 Geri", callback_data: "admin_back" }]
+            ]
+        }
+    };
+    
+    if (messageId) {
+        bot.editMessageText(text, { chat_id: chatId, message_id: messageId, ...opts }).catch(() => {
+            bot.sendMessage(chatId, text, opts);
+        });
+    } else {
+        bot.sendMessage(chatId, text, opts);
+    }
+}
+
 function startAddProduct(chatId) {
     adminState[chatId] = { action: 'add_product', step: 1 };
     
@@ -1584,6 +1875,39 @@ Satın aldığınız anahtar ile @BestOfModFiles_bot botuna gidip anahtarınız�
             
             delete adminState[chatId];
             return;
+        }
+        
+        // UDID gönderme
+        if (state.action === 'send_udid') {
+            const udid = text.trim();
+            const info = state.fcodeInfo;
+            
+            if (!udid) {
+                return bot.sendMessage(chatId, "❌ UDID boş olamaz!");
+            }
+            
+            // Kullanıcıya UDID gönder (Files Bot üzerinden)
+            if (filesBot && info.chatId) {
+                filesBot.sendMessage(info.chatId, `✅ **UDID Onaylandı!**
+
+📱 **UDID'niz:** \`${udid}\`
+
+📦 Menü: ${info.menu}
+📝 Fcode: \`${info.fcode}\`
+
+━━━━━━━━━━━━━━━━━━━━
+⚠️ Bu UDID'yi güvenli bir yerde saklayın.`, { parse_mode: 'Markdown' }).catch(e => {
+                    console.log('UDID gönderim hatası:', e.message);
+                });
+            }
+            
+            // Talebi sil
+            delete pendingFcode[state.orderId];
+            savePendingFcode();
+            
+            bot.sendMessage(chatId, `✅ **UDID Gönderildi!**\n\n👤 Kullanıcı: \`${info.chatId}\`\n📱 UDID: \`${udid}\``, { parse_mode: 'Markdown' });
+            delete adminState[chatId];
+            return showAdminUdidMenu(chatId);
         }
         
         // Fiyat düzenleme
