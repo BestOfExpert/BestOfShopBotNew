@@ -1015,9 +1015,7 @@ Satın aldığınız anahtar ile @BestOfModFiles_bot botuna gidip anahtarınız�
 
 ━━━━━━━━━━━━━━━━━━━━
 
-🙏 <b>Bizi tercih ettiğiniz için teşekkür ederiz!</b>
-
-💬 Destek için: @BestOfExpert`, {
+🙏 <b>Bizi tercih ettiğiniz için teşekkür ederiz!</b>`, {
                 parse_mode: 'HTML',
                 reply_markup: {
                     inline_keyboard: [
