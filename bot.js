@@ -628,10 +628,13 @@ bot.on("message", (msg) => {
 
     // Existing flow: forward payment receipts/photos to admin
     if ((msg.document || msg.photo) && sel) {
+        const products = loadProducts();
+        const price = products[sel.category]?.[sel.product]?.price || '?';
+        
         bot.forwardMessage(ADMIN_ID, chatId, msg.message_id).then((forwardedMsg) => {
             bot.sendMessage(
                 ADMIN_ID,
-                `🛒 Kullanıcı *${chatId}* '*${sel.product}*' için ödeme yaptı.\n\n💰 Fiyat: ${products[sel.category]?.[sel.product]?.price || '?'}₺\n\nOnaylıyor musunuz?`,
+                `🛒 Kullanıcı *${chatId}* '*${sel.product}*' için ödeme yaptı.\n\n💰 Fiyat: ${price}₺\n\nOnaylıyor musunuz?`,
                 {
                     parse_mode: "Markdown",
                     reply_to_message_id: forwardedMsg.message_id,
@@ -651,7 +654,31 @@ bot.on("message", (msg) => {
                     },
                 },
             );
-        }).catch(() => {});
+        }).catch((err) => {
+            console.error('Forward/approval error:', err);
+            // Fallback: send without reply
+            bot.sendMessage(
+                ADMIN_ID,
+                `🛒 Kullanıcı *${chatId}* '*${sel.product}*' için ödeme yaptı.\n\n💰 Fiyat: ${price}₺\n\nOnaylıyor musunuz?`,
+                {
+                    parse_mode: "Markdown",
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: "✅ Onayla",
+                                    callback_data: `approve_${chatId}`,
+                                },
+                                {
+                                    text: "❌ Reddet",
+                                    callback_data: `reject_${chatId}`,
+                                },
+                            ],
+                        ],
+                    },
+                },
+            );
+        });
         bot.sendMessage(
             chatId,
             "**Dekontunuz alındı. Kontrol Edildikten Ve Admin onayından sonra ürününüz teslim edilecektir.Yoğunluğa Göre Süre Uzayabilir.Lütfen Bekleyiniz.Teşekkür Ederiz**",
