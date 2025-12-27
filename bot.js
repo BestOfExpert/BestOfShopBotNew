@@ -967,21 +967,21 @@ bot.on("message", (msg) => {
             
             const expiryDate = new Date(expiresAt).toLocaleDateString('tr-TR');
             
-            // Müşteriye mesaj gönder
-            bot.sendMessage(userId, `✅ **Ödemeniz Onaylandı!**
+            // Müşteriye mesaj gönder (HTML format - Markdown sorunlarını önler)
+            bot.sendMessage(userId, `✅ <b>Ödemeniz Onaylandı!</b>
 
-🔑 **Ürün Anahtarınız:**
-\`${key}\`
+🔑 <b>Ürün Anahtarınız:</b>
+<code>${key}</code>
 
-📦 **Ürün:** ${state.productName}
-📅 **Geçerlilik:** ${days} gün (${expiryDate} tarihine kadar)
+📦 <b>Ürün:</b> ${state.productName}
+📅 <b>Geçerlilik:</b> ${days} gün (${expiryDate} tarihine kadar)
 
 ━━━━━━━━━━━━━━━━━━━━
 
-📥 **Kurulum Dosyaları İçin:**
+📥 <b>Kurulum Dosyaları İçin:</b>
 Satın aldığınız anahtar ile ${GROUP_LINK} botuna gidip anahtarınızı girerek kurulum dosyalarını indirebilirsiniz.
 
-🙏 Bizi tercih ettiğiniz için teşekkür ederiz!`, { parse_mode: 'Markdown' })
+🙏 Bizi tercih ettiğiniz için teşekkür ederiz!`, { parse_mode: 'HTML' })
             .then(() => {
                 console.log(`✅ Müşteriye mesaj gönderildi: ${userId}`);
             })
@@ -991,14 +991,14 @@ Satın aldığınız anahtar ile ${GROUP_LINK} botuna gidip anahtarınızı gire
             });
             
             // Admin'e onay mesajı
-            bot.sendMessage(chatId, `✅ **Anahtar Gönderildi!**
+            bot.sendMessage(chatId, `✅ <b>Anahtar Gönderildi!</b>
 
-👤 Kullanıcı: \`${userId}\`
-📦 Ürün: **${state.productName}**
-🔑 Anahtar: \`${key}\`
-📅 Süre: **${days} gün**
+👤 Kullanıcı: <code>${userId}</code>
+📦 Ürün: <b>${state.productName}</b>
+🔑 Anahtar: <code>${key}</code>
+📅 Süre: <b>${days} gün</b>
 
-✨ Müşteriye bildirim gönderildi.`, { parse_mode: 'Markdown' });
+✨ Müşteriye bildirim gönderildi.`, { parse_mode: 'HTML' });
             
             delete adminState[chatId];
             delete userState[userId];
