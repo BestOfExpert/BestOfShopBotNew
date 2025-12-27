@@ -999,7 +999,8 @@ if (filesBot) {
                     inline_keyboard: [
                         [{ text: '📄 Açıklama Ekle/Düzenle', callback_data: 'files_edit_desc' }],
                         [{ text: '📁 Dosya Ekle', callback_data: 'files_add_file' }],
-                        [{ text: '🗑 Ürünü Sil', callback_data: 'files_delete_prod' }],
+                        [{ text: '� Güncelle (Eski Dosyaları Sil)', callback_data: 'files_update_prod' }],
+                        [{ text: '�🗑 Ürünü Sil', callback_data: 'files_delete_prod' }],
                         [{ text: '🔙 Geri', callback_data: 'files_products' }],
                     ],
                 },
@@ -1026,6 +1027,34 @@ if (filesBot) {
             if (!productName) return filesBot.sendMessage(chatId, '❌ Önce bir ürün seçin.');
             filesAdminState[chatId] = { action: 'add_file', currentProduct: productName };
             return filesBot.sendMessage(chatId, `📁 **${productName}** için dosya gönderin:\n\n(Belge, video veya fotoğraf gönderebilirsiniz)\n\nBitirince "tamam" yazın.`, { parse_mode: 'Markdown' });
+        }
+
+        // Ürün güncelle - eski dosyaları sil, yeni ekleme moduna al
+        if (data === 'files_update_prod') {
+            const productName = filesAdminState[chatId]?.currentProduct;
+            if (!productName) return filesBot.sendMessage(chatId, '❌ Önce bir ürün seçin.');
+            
+            const product = filesProductUploads.get(productName);
+            if (!product) return filesBot.sendMessage(chatId, '❌ Ürün bulunamadı.');
+            
+            const oldFileCount = product.files?.length || 0;
+            const hadDesc = product.description ? true : false;
+            
+            // Eski dosyaları ve açıklamayı sil
+            product.description = '';
+            product.files = [];
+            saveFilesProducts();
+            
+            // Dosya ekleme moduna al
+            filesAdminState[chatId] = { action: 'add_file', currentProduct: productName, isUpdate: true };
+            
+            let msg = `🔄 **${productName}** güncelleniyor\n\n`;
+            msg += `🗑 Silinen: ${oldFileCount} dosya${hadDesc ? ' + açıklama' : ''}\n\n`;
+            msg += `📁 Şimdi yeni dosyaları gönderin.\n`;
+            msg += `📄 Açıklama eklemek için önce dosyaları bitirin ("tamam" yazın).\n\n`;
+            msg += `Dosya göndermeye başlayın:`;
+            
+            return filesBot.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
         }
 
         // Ürün sil
@@ -1292,6 +1321,22 @@ if (filesBot) {
             const productName = state.currentProduct;
             const product = filesProductUploads.get(productName);
             const fileCount = product?.files?.length || 0;
+            const isUpdate = state.isUpdate;
+            
+            // Güncelleme modundaysa açıklama ekleme seçeneği sun
+            if (isUpdate) {
+                filesAdminState[chatId] = { currentProduct: productName };
+                return filesBot.sendMessage(chatId, `✅ **${productName}** için ${fileCount} dosya eklendi.\n\nŞimdi ne yapmak istiyorsunuz?`, {
+                    parse_mode: 'Markdown',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: '📄 Açıklama Ekle', callback_data: 'files_edit_desc' }],
+                            [{ text: '✅ Tamamla', callback_data: 'files_back' }],
+                        ],
+                    },
+                });
+            }
+            
             delete filesAdminState[chatId];
             return filesBot.sendMessage(chatId, `✅ **${productName}** için ${fileCount} dosya kaydedildi.`, { parse_mode: 'Markdown' });
         }
