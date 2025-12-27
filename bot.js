@@ -559,10 +559,16 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
         return showPaymentMethods(chatId, productKey, days, messageId);
     }
     
-    // Ödeme yöntemi seçimi
-    if (data === "pay_iban") return showPaymentDetails(chatId, "iban");
-    if (data === "pay_papara") return showPaymentDetails(chatId, "papara");
-    if (data === "pay_binance") return showPaymentDetails(chatId, "binance");
+    // Ödeme yöntemi seçimi - zaman aşımı kontrolü
+    if (data === "pay_iban" || data === "pay_papara" || data === "pay_binance") {
+        const sel = userState[chatId];
+        if (!sel || !sel.productName) {
+            return bot.sendMessage(chatId, `⚠️ <b>Oturum zaman aşımına uğradı</b>\n\nBotu başlatmak için /start yazın.`, { parse_mode: 'HTML' });
+        }
+        if (data === "pay_iban") return showPaymentDetails(chatId, "iban");
+        if (data === "pay_papara") return showPaymentDetails(chatId, "papara");
+        if (data === "pay_binance") return showPaymentDetails(chatId, "binance");
+    }
     
     // Dekont gönderme butonu
     if (data === "send_receipt") {
@@ -1262,6 +1268,16 @@ Satın aldığınız anahtar ile @BestOfModFiles_bot botuna gidip anahtarınız�
 🙏 Lütfen bekleyiniz. Teşekkür ederiz.`, { 
             parse_mode: "HTML"
         });
+        return;
+    }
+    
+    // Kullanıcı metin yazdı ama aktif oturumu yok ve admin değil - /start yönlendir
+    if (text && !text.startsWith('/') && chatId !== ADMIN_ID && !adminState[chatId]) {
+        // Bekleyen siparişi kontrol et
+        const hasPendingOrder = Object.values(pendingOrders).some(o => o.chatId === chatId);
+        if (!hasPendingOrder && !sel) {
+            return bot.sendMessage(chatId, `⚠️ <b>Oturum bulunamadı</b>\n\nBotu başlatmak için /start yazın.`, { parse_mode: 'HTML' });
+        }
     }
 });
 
@@ -1388,6 +1404,10 @@ if (filesBot) {
     function savePendingFcodes() {
         fs.writeFileSync(PENDING_FCODE_FILE, JSON.stringify(pendingFcodes, null, 2), 'utf-8');
     }
+    
+    // Kullanıcıya gönderilen mesajları takip et (süre bitince silmek için)
+    // { chatId: [{ messageId, timestamp }] }
+    const userMessages = new Map();
 
     function getFilesMenusForShopProduct(shopProductName) {
         return productMapping[shopProductName] || [];
@@ -1415,10 +1435,33 @@ if (filesBot) {
 
     function filesSendAndDelete(method, chatId, payload, options = {}) {
         filesBot[method](chatId, payload, options).then(sent => {
+            // Mesajı kullanıcının listesine ekle
+            if (!userMessages.has(chatId)) {
+                userMessages.set(chatId, []);
+            }
+            userMessages.get(chatId).push({ messageId: sent.message_id, timestamp: Date.now() });
+            
             setTimeout(() => {
                 filesBot.deleteMessage(chatId, sent.message_id).catch(() => {});
+                // Listeden de kaldır
+                const msgs = userMessages.get(chatId);
+                if (msgs) {
+                    const idx = msgs.findIndex(m => m.messageId === sent.message_id);
+                    if (idx > -1) msgs.splice(idx, 1);
+                }
             }, FILES_DELETE_DELAY_MS);
         }).catch(() => {});
+    }
+    
+    // Kullanıcının tüm mesajlarını sil (süre bittiğinde)
+    function deleteAllUserMessages(chatId) {
+        const msgs = userMessages.get(chatId);
+        if (msgs && msgs.length > 0) {
+            msgs.forEach(m => {
+                filesBot.deleteMessage(chatId, m.messageId).catch(() => {});
+            });
+            userMessages.delete(chatId);
+        }
     }
 
     function isValidFilesKey(key) {
@@ -2318,6 +2361,16 @@ if (filesBot) {
 
         // Ürün seçimi
         if (session && session.step === 'validated' && text && !text.startsWith('/')) {
+            // Süre kontrolü - süre bittiyse tüm mesajları sil ve oturumu kapat
+            if (session.expiresAt && session.expiresAt < Date.now()) {
+                deleteAllUserMessages(chatId);
+                filesUserSessions.delete(chatId);
+                return filesBot.sendMessage(chatId, `⏰ **Süreniz Doldu!**\n\nÜrün anahtarınızın süresi bitmiştir.\n\n🛒 Yeni anahtar almak için @BestOfShopFiles_Bot botunu ziyaret edin.`, {
+                    parse_mode: 'Markdown',
+                    reply_markup: { remove_keyboard: true }
+                });
+            }
+            
             const accessibleMenus = session.accessibleMenus || [];
             
             if (!accessibleMenus.includes(text)) {
@@ -2601,6 +2654,20 @@ if (filesBot) {
             return filesBot.sendMessage(chatId, `✅ ${fileCount} dosya kaydedildi.`, { parse_mode: 'Markdown' });
         }
     });
+
+    // Periyodik süre kontrolü - süresi dolan kullanıcıların mesajlarını sil
+    setInterval(() => {
+        for (const [chatId, session] of filesUserSessions.entries()) {
+            if (session.expiresAt && session.expiresAt < Date.now()) {
+                deleteAllUserMessages(chatId);
+                filesUserSessions.delete(chatId);
+                filesBot.sendMessage(chatId, `⏰ **Süreniz Doldu!**\n\nÜrün anahtarınızın süresi bitmiştir. Tüm dosyalar ve mesajlar silindi.\n\n🛒 Yeni anahtar almak için @BestOfShopFiles_Bot botunu ziyaret edin.`, {
+                    parse_mode: 'Markdown',
+                    reply_markup: { remove_keyboard: true }
+                }).catch(() => {});
+            }
+        }
+    }, 60 * 1000); // Her 1 dakikada kontrol et
 
     console.log('Files bot handlers registered.');
 }
