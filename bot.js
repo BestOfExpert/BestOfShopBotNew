@@ -624,6 +624,94 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
         return showAdminKeys(chatId, messageId);
     }
     
+    // Anahtar listele
+    if (data === "admin_keys_list") {
+        const keys = Object.entries(activeKeys);
+        if (keys.length === 0) {
+            return bot.sendMessage(chatId, "📋 Aktif anahtar bulunmuyor.", {
+                reply_markup: {
+                    inline_keyboard: [[{ text: "🔙 Geri", callback_data: "admin_keys" }]]
+                }
+            });
+        }
+        
+        let text = "📋 <b>Aktif Anahtarlar</b>\n\n";
+        const now = new Date();
+        
+        keys.slice(0, 20).forEach(([orderId, entry], i) => {
+            const expiry = new Date(entry.expiresAt);
+            const remaining = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+            const status = remaining > 0 ? `⏳ ${remaining} gün` : '❌ Süresi dolmuş';
+            text += `${i + 1}. <code>${entry.key}</code>\n   👤 ${entry.userId} | ${status}\n\n`;
+        });
+        
+        if (keys.length > 20) {
+            text += `\n... ve ${keys.length - 20} anahtar daha`;
+        }
+        
+        return bot.sendMessage(chatId, text, {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [[{ text: "🔙 Geri", callback_data: "admin_keys" }]]
+            }
+        });
+    }
+    
+    // Manuel anahtar ekle
+    if (data === "admin_keys_add") {
+        adminState[chatId] = { action: 'add_manual_key', step: 'key' };
+        return bot.sendMessage(chatId, "🔑 <b>Manuel Anahtar Ekleme</b>\n\nAnahtarı yazın (veya otomatik oluşturulsun yazın 'auto'):", {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [[{ text: "🔙 İptal", callback_data: "admin_keys" }]]
+            }
+        });
+    }
+    
+    // Manuel anahtar - gün seçimi
+    if (data.startsWith("manual_key_days_")) {
+        const days = parseInt(data.substring(16));
+        const state = adminState[chatId];
+        if (state && state.action === 'add_manual_key') {
+            state.days = days;
+            state.step = 'userId';
+            return bot.sendMessage(chatId, `📅 Süre: ${days} gün\n\n👤 Kullanıcı ID yazın (veya boş bırakmak için 'skip' yazın):`, {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [[{ text: "⏭ Atla", callback_data: "manual_key_skip_user" }]]
+                }
+            });
+        }
+    }
+    
+    // Manuel anahtar - kullanıcı atla
+    if (data === "manual_key_skip_user") {
+        const state = adminState[chatId];
+        if (state && state.action === 'add_manual_key') {
+            const key = state.key;
+            const days = state.days;
+            
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + days);
+            
+            const orderId = 'MANUAL-' + Date.now();
+            activeKeys[orderId] = {
+                key: key,
+                userId: 'MANUAL',
+                expiresAt: expiresAt.toISOString(),
+                products: [],
+                createdAt: new Date().toISOString()
+            };
+            saveKeys(activeKeys);
+            
+            bot.sendMessage(chatId, `✅ <b>Anahtar Eklendi!</b>\n\n🔑 Anahtar: <code>${key}</code>\n📅 Süre: ${days} gün`, {
+                parse_mode: 'HTML'
+            });
+            delete adminState[chatId];
+            return showAdminKeys(chatId);
+        }
+    }
+    
     // Admin - ürün düzenleme
     if (data.startsWith("admin_edit_")) {
         const productKey = data.substring(11);
@@ -1497,6 +1585,57 @@ Satın aldığınız anahtar ile @BestOfModFiles_bot botuna gidip anahtarınız�
             bot.sendMessage(chatId, `✅ ${state.field} güncellendi.`);
             delete adminState[chatId];
             return showAdminPayment(chatId);
+        }
+        
+        // ========== ANAHTAR İŞLEMLERİ ==========
+        
+        // Manuel anahtar ekleme
+        if (state.action === 'add_manual_key') {
+            if (state.step === 'key') {
+                let key = text.trim();
+                if (key.toLowerCase() === 'auto') {
+                    key = 'KEY-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+                }
+                state.key = key;
+                state.step = 'days';
+                return bot.sendMessage(chatId, `🔑 Anahtar: <code>${key}</code>\n\n📅 Kaç gün geçerli olsun?`, {
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: "7 Gün", callback_data: "manual_key_days_7" },
+                                { text: "30 Gün", callback_data: "manual_key_days_30" },
+                                { text: "60 Gün", callback_data: "manual_key_days_60" }
+                            ],
+                            [{ text: "🔙 İptal", callback_data: "admin_keys" }]
+                        ]
+                    }
+                });
+            }
+            if (state.step === 'userId') {
+                const userId = text.trim();
+                const key = state.key;
+                const days = state.days;
+                
+                const expiresAt = new Date();
+                expiresAt.setDate(expiresAt.getDate() + days);
+                
+                const orderId = 'MANUAL-' + Date.now();
+                activeKeys[orderId] = {
+                    key: key,
+                    userId: userId || 'MANUAL',
+                    expiresAt: expiresAt.toISOString(),
+                    products: [],
+                    createdAt: new Date().toISOString()
+                };
+                saveKeys(activeKeys);
+                
+                bot.sendMessage(chatId, `✅ <b>Anahtar Eklendi!</b>\n\n🔑 Anahtar: <code>${key}</code>\n📅 Süre: ${days} gün\n👤 Kullanıcı: ${userId || 'MANUAL'}`, {
+                    parse_mode: 'HTML'
+                });
+                delete adminState[chatId];
+                return showAdminKeys(chatId);
+            }
         }
         
         // ========== KATEGORİ İŞLEMLERİ ==========
