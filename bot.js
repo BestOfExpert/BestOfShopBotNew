@@ -5,14 +5,23 @@ const path = require("path");
 // Load local `.env` when running locally (optional). Install `dotenv` if you want this behavior.
 try { require('dotenv').config(); } catch (e) {}
 
-// Prefer environment variable `BOT_TOKEN` (set this in Railway env). A fallback hard-coded token remains for
-// development: `.env` will be loaded by `dotenv` if present. In production always set `BOT_TOKEN`.
-const token = process.env.BOT_TOKEN;
-if (!token) {
-    console.error('FATAL: BOT_TOKEN environment variable is not set. Set BOT_TOKEN in Railway (or create a local .env for development).');
+// ============== SHOP BOT ==============
+const shopToken = process.env.SHOP_BOT_TOKEN || process.env.BOT_TOKEN;
+if (!shopToken) {
+    console.error('FATAL: SHOP_BOT_TOKEN environment variable is not set.');
     process.exit(1);
 }
-const bot = new TelegramBot(token, { polling: true });
+const bot = new TelegramBot(shopToken, { polling: true });
+
+// ============== FILES BOT ==============
+const filesToken = process.env.FILES_BOT_TOKEN;
+let filesBot = null;
+if (filesToken) {
+    filesBot = new TelegramBot(filesToken, { polling: true });
+    console.log('Files bot initialized.');
+} else {
+    console.log('FILES_BOT_TOKEN not set. Files bot disabled.');
+}
 
 const ADMIN_ID = 1447919062;
 const IBAN = "TR230010300000000014365322";
@@ -718,3 +727,208 @@ bot.on("message", (msg) => {
         );
     }
 });
+
+// ============================================================
+// =================== FILES BOT ENTEGRASYONU =================
+// ============================================================
+
+if (filesBot) {
+    const FILES_DELETE_DELAY_MS = 8 * 60 * 1000; // 8 dakika sonra sil
+    const filesUserSessions = new Map();
+    const filesProductUploads = new Map();
+    const FILES_PRODUCTS_FILE = path.join(__dirname, 'files_products.json');
+
+    // Dosya ürünlerini yükle
+    function loadFilesProducts() {
+        try {
+            if (fs.existsSync(FILES_PRODUCTS_FILE)) {
+                const data = JSON.parse(fs.readFileSync(FILES_PRODUCTS_FILE, 'utf-8'));
+                for (const [name, product] of Object.entries(data)) {
+                    filesProductUploads.set(name, product);
+                }
+            }
+        } catch (e) {}
+    }
+    loadFilesProducts();
+
+    // Dosya ürünlerini kaydet
+    function saveFilesProducts() {
+        const obj = {};
+        for (const [name, product] of filesProductUploads.entries()) {
+            obj[name] = product;
+        }
+        fs.writeFileSync(FILES_PRODUCTS_FILE, JSON.stringify(obj, null, 2), 'utf-8');
+    }
+
+    // Otomatik silmeli gönderim
+    function filesSendAndDelete(method, chatId, payload, options = {}) {
+        filesBot[method](chatId, payload, options).then(sent => {
+            setTimeout(() => {
+                filesBot.deleteMessage(chatId, sent.message_id).catch(() => {});
+            }, FILES_DELETE_DELAY_MS);
+        }).catch(() => {});
+    }
+
+    // Anahtar doğrulama - Shop bot'un keys.json'unu kullan
+    function isValidFilesKey(key) {
+        // Shop bot'un activeKeys'inden kontrol et
+        for (const orderId in activeKeys) {
+            const entry = activeKeys[orderId];
+            if (entry.key === key && entry.expiresAt > Date.now()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Menü oluştur
+    function getFilesDynamicMenu() {
+        const products = Array.from(filesProductUploads.keys());
+        const keyboard = [];
+        for (let i = 0; i < products.length; i += 2) {
+            const row = [products[i]];
+            if (products[i + 1]) row.push(products[i + 1]);
+            keyboard.push(row);
+        }
+        return {
+            reply_markup: {
+                keyboard,
+                resize_keyboard: true,
+                one_time_keyboard: true
+            }
+        };
+    }
+
+    // FILES BOT: /start
+    filesBot.onText(/\/start/, (msg) => {
+        const chatId = msg.chat.id;
+        filesUserSessions.set(chatId, { step: 'awaiting_key' });
+        filesSendAndDelete('sendMessage', chatId, '🔐 Lütfen ürün anahtarınızı girin:');
+    });
+
+    // FILES BOT: Anahtar girişi ve menü erişimi
+    filesBot.on('message', (msg) => {
+        const chatId = msg.chat.id;
+        const text = msg.text?.trim();
+        const session = filesUserSessions.get(chatId);
+
+        // Anahtar doğrulama
+        if (session && session.step === 'awaiting_key' && text && !text.startsWith('/')) {
+            if (isValidFilesKey(text)) {
+                filesUserSessions.set(chatId, { step: 'validated', key: text });
+                const menu = getFilesDynamicMenu();
+                filesSendAndDelete('sendMessage', chatId, '✅ Anahtar doğrulandı. Ürün menüsüne erişebilirsiniz.', menu);
+            } else {
+                filesSendAndDelete('sendMessage', chatId, '❌ Geçersiz veya süresi dolmuş anahtar.');
+            }
+            return;
+        }
+
+        // Ürün seçimi
+        if (session && session.step === 'validated' && text && filesProductUploads.has(text)) {
+            const product = filesProductUploads.get(text);
+
+            if (product.description) {
+                if (typeof product.description === 'string') {
+                    filesSendAndDelete('sendMessage', chatId, product.description);
+                } else if (product.description.type === 'photo') {
+                    filesSendAndDelete('sendPhoto', chatId, product.description.file_id, {
+                        caption: product.description.caption
+                    });
+                }
+            }
+
+            if (product.files) {
+                product.files.forEach(file => {
+                    if (file.type === 'document') {
+                        filesSendAndDelete('sendDocument', chatId, file.file_id);
+                    } else if (file.type === 'video') {
+                        filesSendAndDelete('sendVideo', chatId, file.file_id);
+                    } else if (file.type === 'photo') {
+                        filesSendAndDelete('sendPhoto', chatId, file.file_id);
+                    }
+                });
+            }
+        }
+    });
+
+    // FILES BOT: Ürün ekleme (admin)
+    filesBot.onText(/\/ekle (.+)/, (msg, match) => {
+        if (msg.from.id !== ADMIN_ID) return;
+
+        const productName = match[1].trim();
+        if (!productName) return filesSendAndDelete('sendMessage', msg.chat.id, "❌ Ürün adı eksik.");
+
+        filesProductUploads.set(productName, { description: '', files: [] });
+        saveFilesProducts();
+        filesSendAndDelete('sendMessage', msg.chat.id, `✅ '${productName}' ürünü için dosya eklemeye hazırım. Lütfen dosyaları bu sohbette gönderin.`);
+    });
+
+    // FILES BOT: Menü silme (admin)
+    filesBot.onText(/\/menüsil (.+)/, (msg, match) => {
+        if (msg.from.id !== ADMIN_ID) return;
+        const productName = match[1].trim();
+
+        if (!filesProductUploads.has(productName)) {
+            return filesSendAndDelete('sendMessage', msg.chat.id, `❌ '${productName}' adlı ürün bulunamadı.`);
+        }
+
+        filesProductUploads.delete(productName);
+        saveFilesProducts();
+        filesSendAndDelete('sendMessage', msg.chat.id, `🗑 '${productName}' menüden silindi.`);
+    });
+
+    // FILES BOT: Dosya yükleme (admin)
+    filesBot.on('document', (msg) => {
+        if (msg.from.id !== ADMIN_ID) return;
+        const lastProduct = Array.from(filesProductUploads.keys()).pop();
+        if (!lastProduct) return;
+
+        filesProductUploads.get(lastProduct).files.push({ type: 'document', file_id: msg.document.file_id });
+        saveFilesProducts();
+    });
+
+    filesBot.on('video', (msg) => {
+        if (msg.from.id !== ADMIN_ID) return;
+        const lastProduct = Array.from(filesProductUploads.keys()).pop();
+        if (!lastProduct) return;
+
+        filesProductUploads.get(lastProduct).files.push({ type: 'video', file_id: msg.video.file_id });
+        saveFilesProducts();
+    });
+
+    filesBot.on('photo', (msg) => {
+        if (msg.from.id !== ADMIN_ID) return;
+        const lastProduct = Array.from(filesProductUploads.keys()).pop();
+        if (!lastProduct) return;
+
+        const largestPhoto = msg.photo[msg.photo.length - 1];
+        filesProductUploads.get(lastProduct).files.push({ type: 'photo', file_id: largestPhoto.file_id });
+        saveFilesProducts();
+    });
+
+    // FILES BOT: Açıklama ekleme (admin)
+    filesBot.on('message', (msg) => {
+        if (msg.from.id !== ADMIN_ID) return;
+        if (msg.text?.startsWith('/')) return;
+        
+        const lastProduct = Array.from(filesProductUploads.keys()).pop();
+        if (!lastProduct) return;
+
+        const product = filesProductUploads.get(lastProduct);
+        if (product.description !== '') return; // Zaten açıklama varsa atla
+
+        if (msg.photo && msg.caption) {
+            product.description = { type: 'photo', file_id: msg.photo[msg.photo.length - 1].file_id, caption: msg.caption };
+            saveFilesProducts();
+        } else if (msg.photo && !msg.caption) {
+            product.description = { type: 'photo', file_id: msg.photo[msg.photo.length - 1].file_id, caption: '' };
+            saveFilesProducts();
+        } else if (msg.text) {
+            product.description = msg.text;
+            saveFilesProducts();
+        }
+    });
+
+    console.log('Files bot handlers registered.');
+}
