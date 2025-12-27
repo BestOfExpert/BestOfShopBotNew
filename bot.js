@@ -128,6 +128,9 @@ function showMainMenu(chatId, messageId = null) {
         }]);
     }
     
+    // Resmi Telegram Kanallarımız butonu
+    buttons.push([{ text: "📢 Resmi Telegram Kanallarımız", callback_data: "channels_menu" }]);
+    
     const opts = {
         parse_mode: "Markdown",
         reply_markup: { inline_keyboard: buttons }
@@ -474,6 +477,28 @@ bot.on("callback_query", (query) => {
     if (data === "back_main") {
         userState[chatId] = null;
         return showMainMenu(chatId, messageId);
+    }
+    
+    // Resmi Telegram Kanalları menüsü
+    if (data === "channels_menu") {
+        const text = `📢 **Resmi Telegram Kanallarımız**
+
+Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
+        
+        const opts = {
+            parse_mode: "Markdown",
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: "🌟 Genel Mod Kanalımız", url: "https://t.me/cyraxturkey" }],
+                    [{ text: "🎱 8 Ball Pool Kanalımız", url: "https://t.me/BallPoolOfficialTurkiye" }],
+                    [{ text: "🔙 Ana Menü", callback_data: "back_main" }]
+                ]
+            }
+        };
+        
+        return bot.editMessageText(text, { chat_id: chatId, message_id: messageId, ...opts }).catch(() => {
+            bot.sendMessage(chatId, text, opts);
+        });
     }
     
     // Ana kategori seçimi (Mobil/PC)
@@ -968,20 +993,38 @@ bot.on("message", (msg) => {
             const expiryDate = new Date(expiresAt).toLocaleDateString('tr-TR');
             
             // Müşteriye mesaj gönder (HTML format - Markdown sorunlarını önler)
-            bot.sendMessage(userId, `✅ <b>Ödemeniz Onaylandı!</b>
-
-🔑 <b>Ürün Anahtarınız:</b>
-<code>${key}</code>
-
-📦 <b>Ürün:</b> ${state.productName}
-📅 <b>Geçerlilik:</b> ${days} gün (${expiryDate} tarihine kadar)
+            bot.sendMessage(userId, `✅ <b>ÖDEMENİZ ONAYLANDI!</b>
 
 ━━━━━━━━━━━━━━━━━━━━
 
-📥 <b>Kurulum Dosyaları İçin:</b>
-Satın aldığınız anahtar ile ${GROUP_LINK} botuna gidip anahtarınızı girerek kurulum dosyalarını indirebilirsiniz.
+🔑 <b>ÜRÜN ANAHTARINIZ:</b>
+<code>${key}</code>
 
-🙏 Bizi tercih ettiğiniz için teşekkür ederiz!`, { parse_mode: 'HTML' })
+📦 <b>Ürün:</b> ${state.productName}
+📅 <b>Geçerlilik Süresi:</b> ${days} Gün
+📆 <b>Bitiş Tarihi:</b> ${expiryDate}
+
+━━━━━━━━━━━━━━━━━━━━
+
+📥 <b>KURULUM DOSYALARI</b>
+
+Satın aldığınız anahtar ile @BestOfModFiles_bot botuna gidip anahtarınızı girerek kurulum dosyalarına ulaşabilirsiniz.
+
+🔔 <b>BİLDİRİM</b>
+Ürününüzde güncelleme olduğu zaman tarafımızdan size bildirim gönderilecektir.
+
+━━━━━━━━━━━━━━━━━━━━
+
+🙏 <b>Bizi tercih ettiğiniz için teşekkür ederiz!</b>
+
+💬 Destek için: @BestOfExpert`, {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: "📥 Kurulum Dosyalarına Git", url: "https://t.me/BestOfModFiles_bot" }]
+                    ]
+                }
+            })
             .then(() => {
                 console.log(`✅ Müşteriye mesaj gönderildi: ${userId}`);
             })
