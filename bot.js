@@ -1,4 +1,4 @@
-const TelegramBot = require("node-telegram-bot-api");
+﻿const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs");
 const path = require("path");
 
@@ -268,13 +268,13 @@ Bu ürün şu anda bakımdadır. Lütfen daha sonra tekrar deneyin.`;
     
     const buttons = durations.map(dur => {
         const price = product.prices?.[dur.days] || 0;
-        const hasStock = (product.stock?.[dur.days]?.length || 0) > 0;
-        const stockText = hasStock ? '' : ' (Stok Yok)';
+        // Fiyat 0 veya tanımsızsa bu süreyi gösterme
+        if (!price || price <= 0) return null;
         return [{
-            text: `${dur.label} - ${price}${symbol} Satın Al${stockText}`,
-            callback_data: hasStock ? `buy_${productKey}_${dur.days}` : `nostock_${productKey}_${dur.days}`
+            text: `${dur.label} - ${price}${symbol} Satın Al`,
+            callback_data: `buy_${productKey}_${dur.days}`
         }];
-    });
+    }).filter(btn => btn !== null);
     
     buttons.push([{ text: "🔙 Geri", callback_data: `back_products_${product.category}_${product.subcategory}` }]);
     
@@ -510,11 +510,6 @@ bot.on("callback_query", (query) => {
         return showProductDetail(chatId, productKey, messageId);
     }
     
-    // Stok yok
-    if (data.startsWith("nostock_")) {
-        return bot.answerCallbackQuery(query.id, { text: "❌ Bu süre için stok bulunmamaktadır.", show_alert: true });
-    }
-    
     // Satın al - ödeme yöntemi seçimine git
     if (data.startsWith("buy_")) {
         const parts = data.substring(4).split("_");
@@ -599,17 +594,18 @@ bot.on("callback_query", (query) => {
         return bot.sendMessage(chatId, "Lütfen yeni açıklamayı gönderin:");
     }
     
-    // Admin - stok ekle
-    if (data.startsWith("admin_stock_")) {
-        const productKey = data.substring(12);
-        adminState[chatId] = { action: 'add_stock', productKey };
-        return bot.sendMessage(chatId, `Stok eklemek için şu formatta girin:\n\n\`süre:anahtar1,anahtar2\`\n\nÖrnek: \`7:key1,key2,key3\`\n\n(7 günlük stoka key1, key2, key3 ekler)`, { parse_mode: 'Markdown' });
-    }
-    
     // Admin - süre ekle
     if (data === "admin_add_duration") {
         adminState[chatId] = { action: 'add_duration' };
         return bot.sendMessage(chatId, "Yeni süre seçeneği girin (gün sayısı):\n\nÖrnek: `90`", { parse_mode: 'Markdown' });
+    }
+    
+    // Admin - süre düzenle
+    if (data.startsWith("admin_edit_dur_")) {
+        const days = parseInt(data.substring(15));
+        adminState[chatId] = { action: 'edit_duration_label', days };
+        const d = loadProducts().settings?.durations?.find(x => x.days === days);
+        return bot.sendMessage(chatId, `**${d?.label || days + ' Gün'}** için yeni etiket girin:\n\nÖrnek: \`7 Gün\` veya \`Haftalık\` veya \`1 Hafta\``, { parse_mode: 'Markdown' });
     }
     
     // Admin - süre sil
@@ -708,10 +704,6 @@ function showAdminProductEdit(chatId, productKey, messageId = null) {
     const product = data.products[productKey];
     if (!product) return bot.sendMessage(chatId, "Ürün bulunamadı.");
     
-    const stockInfo = Object.entries(product.stock || {})
-        .map(([days, arr]) => `${days} gün: ${arr.length} adet`)
-        .join('\n') || 'Stok yok';
-    
     const priceInfo = Object.entries(product.prices || {})
         .map(([days, price]) => `${days} gün: ${price}₺`)
         .join('\n') || 'Fiyat yok';
@@ -722,10 +714,7 @@ function showAdminProductEdit(chatId, productKey, messageId = null) {
 🔵 Bakım: ${product.maintenance ? 'Evet' : 'Hayır'}
 
 💰 **Fiyatlar:**
-${priceInfo}
-
-📦 **Stok:**
-${stockInfo}`;
+${priceInfo}`;
     
     const opts = {
         parse_mode: "Markdown",
@@ -733,7 +722,6 @@ ${stockInfo}`;
             inline_keyboard: [
                 [{ text: "💰 Fiyatları Düzenle", callback_data: `admin_price_${productKey}` }],
                 [{ text: "📝 Açıklamayı Düzenle", callback_data: `admin_desc_${productKey}` }],
-                [{ text: "📦 Stok Ekle", callback_data: `admin_stock_${productKey}` }],
                 [{ text: product.maintenance ? "✅ Bakımdan Çıkar" : "🔵 Bakıma Al", callback_data: `admin_maint_${productKey}` }],
                 [{ text: "🗑 Ürünü Sil", callback_data: `admin_delete_${productKey}` }],
                 [{ text: "🔙 Geri", callback_data: "admin_products" }]
@@ -759,10 +747,13 @@ function showAdminDurations(chatId, messageId = null) {
         text += `• ${d.label} (${d.days} gün)\n`;
     });
     
-    const buttons = durations.map(d => [{
-        text: `🗑 ${d.label} Sil`,
-        callback_data: `admin_del_dur_${d.days}`
-    }]);
+    const buttons = [];
+    durations.forEach(d => {
+        buttons.push([
+            { text: `✏️ ${d.label} Düzenle`, callback_data: `admin_edit_dur_${d.days}` },
+            { text: `🗑 Sil`, callback_data: `admin_del_dur_${d.days}` }
+        ]);
+    });
     
     buttons.push([{ text: "➕ Süre Ekle", callback_data: "admin_add_duration" }]);
     buttons.push([{ text: "🔙 Geri", callback_data: "admin_back" }]);
@@ -907,7 +898,10 @@ function handleApproval(chatId, userId) {
 ⏱ Süre: ${sel.days} gün
 💰 Fiyat: ${sel.price}₺
 
-Lütfen anahtarı gönderin:`, { parse_mode: 'Markdown' });
+📝 **Format:** \`anahtar süre\`
+📌 **Örnek:** \`the_best1 30\`
+
+Lütfen anahtarı ve süreyi yazın:`, { parse_mode: 'Markdown' });
 }
 
 function handleRejection(chatId, userId) {
@@ -925,11 +919,17 @@ bot.on("message", (msg) => {
         const state = adminState[chatId];
         const text = (msg.text || '').trim();
         
-        // Anahtar gönderimi
+        // Anahtar gönderimi - format: anahtar süre (örn: the_best1 30)
         if (state.action === 'send_key') {
             const userId = state.targetUserId;
-            const key = text;
-            const days = state.days;
+            const parts = text.split(/\s+/);
+            
+            if (parts.length < 2) {
+                return bot.sendMessage(chatId, `⚠️ Hatalı format!\n\n📝 **Format:** \`anahtar süre\`\n📌 **Örnek:** \`the_best1 30\`\n\nTekrar deneyin:`, { parse_mode: 'Markdown' });
+            }
+            
+            const key = parts[0];
+            const days = parseInt(parts[1]) || state.days;
             const expiresAt = Date.now() + days * 24 * 60 * 60 * 1000;
             const orderId = `${userId}_${Date.now()}`;
             
@@ -995,26 +995,6 @@ bot.on("message", (msg) => {
             return showAdminProductEdit(chatId, state.productKey);
         }
         
-        // Stok ekleme
-        if (state.action === 'add_stock') {
-            const data = loadProducts();
-            const [days, keys] = text.split(':');
-            if (days && keys && data.products[state.productKey]) {
-                const keyList = keys.split(',').map(k => k.trim()).filter(k => k);
-                if (!data.products[state.productKey].stock) {
-                    data.products[state.productKey].stock = {};
-                }
-                if (!data.products[state.productKey].stock[days]) {
-                    data.products[state.productKey].stock[days] = [];
-                }
-                data.products[state.productKey].stock[days].push(...keyList);
-                saveProducts(data);
-                bot.sendMessage(chatId, `✅ ${keyList.length} adet anahtar ${days} günlük stoka eklendi.`);
-            }
-            delete adminState[chatId];
-            return showAdminProductEdit(chatId, state.productKey);
-        }
-        
         // Süre ekleme
         if (state.action === 'add_duration') {
             const days = parseInt(text);
@@ -1027,6 +1007,22 @@ bot.on("message", (msg) => {
                     data.settings.durations.sort((a, b) => a.days - b.days);
                     saveProducts(data);
                     bot.sendMessage(chatId, `✅ ${days} günlük süre seçeneği eklendi.`);
+                }
+            }
+            delete adminState[chatId];
+            return showAdminDurations(chatId);
+        }
+        
+        // Süre etiketi düzenleme
+        if (state.action === 'edit_duration_label') {
+            const newLabel = text.trim();
+            if (newLabel) {
+                const data = loadProducts();
+                const dur = data.settings?.durations?.find(d => d.days === state.days);
+                if (dur) {
+                    dur.label = newLabel;
+                    saveProducts(data);
+                    bot.sendMessage(chatId, `✅ Süre etiketi "${newLabel}" olarak güncellendi.`);
                 }
             }
             delete adminState[chatId];
@@ -1152,7 +1148,16 @@ function checkExpiringKeys() {
         
         if (timeLeft > 0 && timeLeft <= oneDayMs && !entry.notified) {
             const prods = entry.products || [];
-            bot.sendMessage(entry.chatId, `⚠️ **Hatırlatma**\n\nAnahtarınız yarın sona erecek.\n\n🔑 \`${entry.key}\`\n📦 ${prods.join(', ')}`, { parse_mode: 'Markdown' }).catch(() => {});
+            const productList = prods.length > 0 ? prods.join(', ') : 'Ürününüz';
+            
+            bot.sendMessage(entry.chatId, `⚠️ **Süre Hatırlatması**
+
+🔑 Anahtarınız: \`${entry.key}\`
+📦 Ürün: ${productList}
+
+⏰ **Süreniz yarın bitiyor!**
+
+Tekrar almak isterseniz /start yazarak uzatabilirsiniz. 🛒`, { parse_mode: 'Markdown' }).catch(() => {});
             entry.notified = true;
             changed = true;
         }
@@ -1170,3 +1175,964 @@ setInterval(checkExpiringKeys, 60 * 60 * 1000);
 setTimeout(checkExpiringKeys, 5000);
 
 console.log('Shop Bot başlatıldı!');
+
+// ============================================================
+// =================== FILES BOT ENTEGRASYONU =================
+// ============================================================
+
+if (filesBot) {
+    const FILES_DELETE_DELAY_MS = 30 * 60 * 1000; // 30 dakika sonra sil
+    const filesUserSessions = new Map();
+    const filesProductUploads = new Map();
+    const FILES_PRODUCTS_FILE = path.join(__dirname, 'files_products.json');
+    const PRODUCT_MAPPING_FILE = path.join(__dirname, 'product_mapping.json');
+
+    // Ürün eşleştirme: Shop bot ürün adı -> Files bot menü adları (array)
+    let productMapping = {};
+
+    function loadProductMapping() {
+        try {
+            if (fs.existsSync(PRODUCT_MAPPING_FILE)) {
+                productMapping = JSON.parse(fs.readFileSync(PRODUCT_MAPPING_FILE, 'utf-8'));
+            }
+        } catch (e) {}
+    }
+    loadProductMapping();
+
+    function saveProductMapping() {
+        fs.writeFileSync(PRODUCT_MAPPING_FILE, JSON.stringify(productMapping, null, 2), 'utf-8');
+    }
+
+    function getFilesMenusForShopProduct(shopProductName) {
+        return productMapping[shopProductName] || [];
+    }
+
+    function loadFilesProducts() {
+        try {
+            if (fs.existsSync(FILES_PRODUCTS_FILE)) {
+                const data = JSON.parse(fs.readFileSync(FILES_PRODUCTS_FILE, 'utf-8'));
+                for (const [name, product] of Object.entries(data)) {
+                    filesProductUploads.set(name, product);
+                }
+            }
+        } catch (e) {}
+    }
+    loadFilesProducts();
+
+    function saveFilesProducts() {
+        const obj = {};
+        for (const [name, product] of filesProductUploads.entries()) {
+            obj[name] = product;
+        }
+        fs.writeFileSync(FILES_PRODUCTS_FILE, JSON.stringify(obj, null, 2), 'utf-8');
+    }
+
+    function filesSendAndDelete(method, chatId, payload, options = {}) {
+        filesBot[method](chatId, payload, options).then(sent => {
+            setTimeout(() => {
+                filesBot.deleteMessage(chatId, sent.message_id).catch(() => {});
+            }, FILES_DELETE_DELAY_MS);
+        }).catch(() => {});
+    }
+
+    function isValidFilesKey(key) {
+        for (const orderId in activeKeys) {
+            const entry = activeKeys[orderId];
+            if (entry.key === key && entry.expiresAt > Date.now()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function getKeyInfo(key) {
+        for (const orderId in activeKeys) {
+            const entry = activeKeys[orderId];
+            if (entry.key === key && entry.expiresAt > Date.now()) {
+                if (entry.product && !entry.products) {
+                    entry.products = [entry.product];
+                }
+                return entry;
+            }
+        }
+        return null;
+    }
+
+    function findOrderIdByKey(key) {
+        for (const orderId in activeKeys) {
+            if (activeKeys[orderId].key === key) {
+                return orderId;
+            }
+        }
+        return null;
+    }
+
+    function addProductToKey(orderId, productName) {
+        if (!activeKeys[orderId]) return false;
+        if (!activeKeys[orderId].products) {
+            activeKeys[orderId].products = activeKeys[orderId].product ? [activeKeys[orderId].product] : [];
+        }
+        if (!activeKeys[orderId].products.includes(productName)) {
+            activeKeys[orderId].products.push(productName);
+            saveKeys(activeKeys);
+            return true;
+        }
+        return false;
+    }
+
+    function removeProductFromKey(orderId, productName) {
+        if (!activeKeys[orderId] || !activeKeys[orderId].products) return false;
+        const idx = activeKeys[orderId].products.indexOf(productName);
+        if (idx > -1) {
+            activeKeys[orderId].products.splice(idx, 1);
+            saveKeys(activeKeys);
+            return true;
+        }
+        return false;
+    }
+
+    function getShopProductsForFilesMenu(filesMenuName) {
+        const shopProducts = [];
+        for (const shopProd in productMapping) {
+            if (productMapping[shopProd].includes(filesMenuName)) {
+                shopProducts.push(shopProd);
+            }
+        }
+        return shopProducts;
+    }
+
+    function getUsersForProduct(filesMenuName) {
+        const users = [];
+        const addedChatIds = new Set();
+        const shopProducts = getShopProductsForFilesMenu(filesMenuName);
+        
+        for (const orderId in activeKeys) {
+            const entry = activeKeys[orderId];
+            if (entry.expiresAt <= Date.now()) continue;
+            
+            const userProducts = entry.products || (entry.product ? [entry.product] : []);
+            const hasAccess = shopProducts.some(sp => userProducts.includes(sp)) || 
+                              userProducts.includes(filesMenuName);
+            
+            if (hasAccess && !addedChatIds.has(entry.chatId)) {
+                users.push({
+                    chatId: entry.chatId,
+                    key: entry.key,
+                    expiresAt: entry.expiresAt
+                });
+                addedChatIds.add(entry.chatId);
+            }
+        }
+        return users;
+    }
+
+    async function notifyProductUpdate(productName) {
+        const usersToNotify = getUsersForProduct(productName);
+        if (usersToNotify.length === 0) return 0;
+
+        let sentCount = 0;
+        for (const user of usersToNotify) {
+            try {
+                const daysLeft = Math.ceil((user.expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+                const message = `🔔 **Ürün Güncelleme Bildirimi**\n\n📦 **${productName}** ürünü güncellendi!\n\n✨ Yeni dosyalar ve içerikler eklendi.\n\n🔑 Anahtarınızı girerek güncel dosyalara ulaşabilirsiniz.\n📅 Kalan süreniz: **${daysLeft} gün**\n\n👇 Hemen erişmek için /start yazın.`;
+                
+                await filesBot.sendMessage(user.chatId, message, { parse_mode: 'Markdown' });
+                sentCount++;
+            } catch (e) {
+                console.log(`Bildirim gönderilemedi: ${user.chatId}`);
+            }
+        }
+        return sentCount;
+    }
+
+    // FILES BOT: /start
+    filesBot.onText(/\/start/, (msg) => {
+        const chatId = msg.chat.id;
+        filesUserSessions.set(chatId, { step: 'awaiting_key' });
+        filesSendAndDelete('sendMessage', chatId, '🔐 Lütfen ürün anahtarınızı girin:');
+    });
+
+    const filesAdminState = {};
+
+    // FILES BOT: /admin paneli
+    filesBot.onText(/\/admin/, (msg) => {
+        const chatId = msg.chat.id;
+        if (chatId !== ADMIN_ID) return filesBot.sendMessage(chatId, "Yetkisiz.");
+
+        const productCount = filesProductUploads.size;
+        const mappingCount = Object.keys(productMapping).length;
+        filesBot.sendMessage(chatId, `**📁 Files Bot Admin Paneli**\n\nToplam menü: ${productCount}\nEşleştirme: ${mappingCount}`, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '📦 Ürünleri Yönet', callback_data: 'files_products' }],
+                    [{ text: '➕ Yeni Ürün Ekle', callback_data: 'files_add_product' }],
+                    [{ text: '🔗 Ürün Eşleştir', callback_data: 'files_mapping' }],
+                    [{ text: '🔑 Anahtarları Yönet', callback_data: 'files_keys' }],
+                ],
+            },
+        });
+    });
+
+    // FILES BOT: Callback handler
+    filesBot.on('callback_query', (query) => {
+        const chatId = query.from.id;
+        const data = query.data;
+        try { filesBot.answerCallbackQuery(query.id).catch(()=>{}); } catch (e) {}
+
+        if (chatId !== ADMIN_ID) return;
+
+        if (data === 'files_products') {
+            const products = Array.from(filesProductUploads.keys());
+            if (products.length === 0) {
+                return filesBot.sendMessage(chatId, '📦 Henüz ürün yok.');
+            }
+            const buttons = products.map(name => {
+                const p = filesProductUploads.get(name);
+                const fileCount = p.files ? p.files.length : 0;
+                return [{ text: `📦 ${name} (${fileCount} dosya)`, callback_data: `files_prod_${name.substring(0, 30)}` }];
+            });
+            buttons.push([{ text: '🔙 Geri', callback_data: 'files_back' }]);
+            return filesBot.sendMessage(chatId, '**📦 Ürünler:**', {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: buttons },
+            });
+        }
+
+        if (data.startsWith('files_prod_')) {
+            const searchName = data.substring(11);
+            let productName = null;
+            for (const name of filesProductUploads.keys()) {
+                if (name.startsWith(searchName) || name === searchName) {
+                    productName = name;
+                    break;
+                }
+            }
+            if (!productName) return filesBot.sendMessage(chatId, '❌ Ürün bulunamadı.');
+
+            const product = filesProductUploads.get(productName);
+            const fileCount = product.files ? product.files.length : 0;
+            const hasDesc = product.description ? '✅' : '❌';
+
+            filesAdminState[chatId] = { currentProduct: productName };
+
+            return filesBot.sendMessage(chatId, `**📦 ${productName}**\n\n📄 Açıklama: ${hasDesc}\n📁 Dosya sayısı: ${fileCount}`, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '📄 Açıklama Ekle/Düzenle', callback_data: 'files_edit_desc' }],
+                        [{ text: '📁 Dosya Ekle', callback_data: 'files_add_file' }],
+                        [{ text: '🔄 Güncelle (Eski Dosyaları Sil)', callback_data: 'files_update_prod' }],
+                        [{ text: '🗑 Ürünü Sil', callback_data: 'files_delete_prod' }],
+                        [{ text: '🔙 Geri', callback_data: 'files_products' }],
+                    ],
+                },
+            });
+        }
+
+        if (data === 'files_add_product') {
+            filesAdminState[chatId] = { action: 'add_product' };
+            return filesBot.sendMessage(chatId, '📦 **Yeni Ürün Ekleme**\n\nÜrün adını yazın:', { parse_mode: 'Markdown' });
+        }
+
+        if (data === 'files_edit_desc') {
+            const productName = filesAdminState[chatId]?.currentProduct;
+            if (!productName) return filesBot.sendMessage(chatId, '❌ Önce bir ürün seçin.');
+            filesAdminState[chatId] = { action: 'edit_desc', currentProduct: productName };
+            return filesBot.sendMessage(chatId, `📄 **${productName}** için açıklama yazın:`, { parse_mode: 'Markdown' });
+        }
+
+        if (data === 'files_add_file') {
+            const productName = filesAdminState[chatId]?.currentProduct;
+            if (!productName) return filesBot.sendMessage(chatId, '❌ Önce bir ürün seçin.');
+            filesAdminState[chatId] = { action: 'add_file', currentProduct: productName };
+            return filesBot.sendMessage(chatId, `📁 **${productName}** için dosya gönderin:\n\nBitirince "tamam" yazın.`, { parse_mode: 'Markdown' });
+        }
+
+        if (data === 'files_update_prod') {
+            const productName = filesAdminState[chatId]?.currentProduct;
+            if (!productName) return filesBot.sendMessage(chatId, '❌ Önce bir ürün seçin.');
+            
+            const product = filesProductUploads.get(productName);
+            if (!product) return filesBot.sendMessage(chatId, '❌ Ürün bulunamadı.');
+            
+            const oldFileCount = product.files?.length || 0;
+            const affectedUsers = getUsersForProduct(productName).length;
+            
+            product.description = '';
+            product.files = [];
+            saveFilesProducts();
+            
+            filesAdminState[chatId] = { action: 'add_file', currentProduct: productName, isUpdate: true };
+            
+            let msg = `🔄 **${productName}** güncelleniyor\n\n`;
+            msg += `🗑 Silinen: ${oldFileCount} dosya\n`;
+            msg += `👥 Bu ürünü alan müşteri: **${affectedUsers} kişi**\n\n`;
+            msg += `📁 Şimdi yeni dosyaları gönderin.\n`;
+            msg += `⚠️ Güncelleme tamamlandığında müşterilere bildirim gidecek.\n\nDosya göndermeye başlayın:`;
+            
+            return filesBot.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
+        }
+
+        if (data === 'files_delete_prod') {
+            const productName = filesAdminState[chatId]?.currentProduct;
+            if (!productName) return filesBot.sendMessage(chatId, '❌ Önce bir ürün seçin.');
+            filesProductUploads.delete(productName);
+            saveFilesProducts();
+            delete filesAdminState[chatId];
+            return filesBot.sendMessage(chatId, `✅ **${productName}** silindi.`, { parse_mode: 'Markdown' });
+        }
+
+        if (data === 'files_send_notification') {
+            const productName = filesAdminState[chatId]?.currentProduct;
+            if (!productName) return filesBot.sendMessage(chatId, '❌ Önce bir ürün seçin.');
+            
+            filesBot.sendMessage(chatId, '📤 Bildirimler gönderiliyor...').then(async (loadingMsg) => {
+                const sentCount = await notifyProductUpdate(productName);
+                await filesBot.deleteMessage(chatId, loadingMsg.message_id).catch(() => {});
+                delete filesAdminState[chatId];
+                return filesBot.sendMessage(chatId, `✅ **Güncelleme Tamamlandı!**\n\n📦 Ürün: **${productName}**\n📢 Bildirim gönderilen: **${sentCount} müşteri**`, {
+                    parse_mode: 'Markdown',
+                    reply_markup: { inline_keyboard: [[{ text: '🔙 Admin Paneline Dön', callback_data: 'files_back' }]] },
+                });
+            });
+            return;
+        }
+
+        if (data === 'files_keys') {
+            const validKeys = Object.values(activeKeys).filter(k => k.expiresAt > Date.now());
+            return filesBot.sendMessage(chatId, `**🔑 Anahtar Yönetimi** (${validKeys.length} aktif)`, { 
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '🔍 Anahtar Ara', callback_data: 'files_key_search' }],
+                        [{ text: '📋 Son 10 Anahtar', callback_data: 'files_key_list' }],
+                        [{ text: '🔙 Geri', callback_data: 'files_back' }],
+                    ],
+                },
+            });
+        }
+
+        if (data === 'files_key_search') {
+            filesAdminState[chatId] = { action: 'key_search' };
+            return filesBot.sendMessage(chatId, '🔍 Aramak istediğiniz anahtarı yazın:', { parse_mode: 'Markdown' });
+        }
+
+        if (data === 'files_key_list') {
+            const validKeys = Object.entries(activeKeys)
+                .filter(([_, k]) => k.expiresAt > Date.now())
+                .sort((a, b) => b[1].expiresAt - a[1].expiresAt)
+                .slice(0, 10);
+            
+            if (validKeys.length === 0) {
+                return filesBot.sendMessage(chatId, '❌ Aktif anahtar bulunamadı.', {
+                    reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'files_keys' }]] }
+                });
+            }
+
+            const buttons = validKeys.map(([orderId, entry]) => {
+                const daysLeft = Math.ceil((entry.expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+                const products = entry.products || [];
+                const shortKey = entry.key.length > 15 ? entry.key.substring(0, 15) + '...' : entry.key;
+                return [{ text: `🔑 ${shortKey} (${products.length} ürün, ${daysLeft}g)`, callback_data: `files_key_${orderId.substring(0, 20)}` }];
+            });
+            buttons.push([{ text: '🔙 Geri', callback_data: 'files_keys' }]);
+
+            return filesBot.sendMessage(chatId, '**📋 Son Anahtarlar**', {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: buttons },
+            });
+        }
+
+        if (data.startsWith('files_key_')) {
+            const searchOrderId = data.substring(10);
+            let foundOrderId = null;
+            
+            for (const orderId in activeKeys) {
+                if (orderId.startsWith(searchOrderId)) {
+                    foundOrderId = orderId;
+                    break;
+                }
+            }
+            
+            if (!foundOrderId) return filesBot.sendMessage(chatId, '❌ Anahtar bulunamadı.');
+            
+            const entry = activeKeys[foundOrderId];
+            const products = entry.products || [];
+            const daysLeft = Math.ceil((entry.expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+            const productList = products.length > 0 ? products.map((p, i) => `${i + 1}. ${p}`).join('\n') : '(Ürün yok)';
+            
+            filesAdminState[chatId] = { action: 'key_manage', orderId: foundOrderId };
+            
+            return filesBot.sendMessage(chatId, `**🔑 Anahtar Detayı**\n\n🔐 \`${entry.key}\`\n👤 ID: ${entry.chatId}\n📅 ${daysLeft} gün\n\n📦 **Ürünler:**\n${productList}`, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '➕ Ürün Ekle', callback_data: 'files_key_add_prod' }],
+                        [{ text: '➖ Ürün Çıkar', callback_data: 'files_key_remove_prod' }],
+                        [{ text: '🔙 Geri', callback_data: 'files_keys' }],
+                    ],
+                },
+            });
+        }
+
+        if (data === 'files_key_add_prod') {
+            const orderId = filesAdminState[chatId]?.orderId;
+            if (!orderId) return filesBot.sendMessage(chatId, '❌ Önce bir anahtar seçin.');
+            
+            const filesMenus = Array.from(filesProductUploads.keys());
+            if (filesMenus.length === 0) {
+                return filesBot.sendMessage(chatId, '❌ Henüz ürün yok.', {
+                    reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: `files_key_${orderId.substring(0, 20)}` }]] }
+                });
+            }
+            
+            const buttons = filesMenus.slice(0, 10).map(name => {
+                return [{ text: `📦 ${name.substring(0, 25)}`, callback_data: `files_key_addp_${name.substring(0, 20)}` }];
+            });
+            buttons.push([{ text: '🔙 İptal', callback_data: `files_key_${orderId.substring(0, 20)}` }]);
+            
+            return filesBot.sendMessage(chatId, '**➕ Ürün Ekle**', {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: buttons },
+            });
+        }
+
+        if (data.startsWith('files_key_addp_')) {
+            const orderId = filesAdminState[chatId]?.orderId;
+            if (!orderId) return filesBot.sendMessage(chatId, '❌ Önce bir anahtar seçin.');
+            
+            const searchName = data.substring(15);
+            let productName = null;
+            for (const name of filesProductUploads.keys()) {
+                if (name.startsWith(searchName)) {
+                    productName = name;
+                    break;
+                }
+            }
+            
+            if (!productName) return filesBot.sendMessage(chatId, '❌ Ürün bulunamadı.');
+            
+            const added = addProductToKey(orderId, productName);
+            return filesBot.sendMessage(chatId, added ? `✅ **${productName}** eklendi!` : `⚠️ Zaten mevcut.`, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: [[{ text: '🔙 Anahtara Dön', callback_data: `files_key_${orderId.substring(0, 20)}` }]] }
+            });
+        }
+
+        if (data === 'files_key_remove_prod') {
+            const orderId = filesAdminState[chatId]?.orderId;
+            if (!orderId) return filesBot.sendMessage(chatId, '❌ Önce bir anahtar seçin.');
+            
+            const entry = activeKeys[orderId];
+            const products = entry?.products || [];
+            
+            if (products.length === 0) {
+                return filesBot.sendMessage(chatId, '❌ Ürün yok.', {
+                    reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: `files_key_${orderId.substring(0, 20)}` }]] }
+                });
+            }
+            
+            const buttons = products.map(name => [{ text: `❌ ${name.substring(0, 25)}`, callback_data: `files_key_remp_${name.substring(0, 20)}` }]);
+            buttons.push([{ text: '🔙 İptal', callback_data: `files_key_${orderId.substring(0, 20)}` }]);
+            
+            return filesBot.sendMessage(chatId, '**➖ Ürün Çıkar**', {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: buttons },
+            });
+        }
+
+        if (data.startsWith('files_key_remp_')) {
+            const orderId = filesAdminState[chatId]?.orderId;
+            if (!orderId) return filesBot.sendMessage(chatId, '❌ Önce bir anahtar seçin.');
+            
+            const searchName = data.substring(15);
+            const entry = activeKeys[orderId];
+            const products = entry?.products || [];
+            
+            let productName = null;
+            for (const name of products) {
+                if (name.startsWith(searchName)) {
+                    productName = name;
+                    break;
+                }
+            }
+            
+            if (!productName) return filesBot.sendMessage(chatId, '❌ Ürün bulunamadı.');
+            
+            removeProductFromKey(orderId, productName);
+            return filesBot.sendMessage(chatId, `✅ **${productName}** çıkarıldı!`, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: [[{ text: '🔙 Anahtara Dön', callback_data: `files_key_${orderId.substring(0, 20)}` }]] }
+            });
+        }
+
+        if (data === 'files_back') {
+            delete filesAdminState[chatId];
+            const productCount = filesProductUploads.size;
+            const mappingCount = Object.keys(productMapping).length;
+            return filesBot.sendMessage(chatId, `**📁 Files Bot Admin Paneli**\n\nToplam menü: ${productCount}\nEşleştirme: ${mappingCount}`, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '📦 Ürünleri Yönet', callback_data: 'files_products' }],
+                        [{ text: '➕ Yeni Ürün Ekle', callback_data: 'files_add_product' }],
+                        [{ text: '🔗 Ürün Eşleştir', callback_data: 'files_mapping' }],
+                        [{ text: '🔑 Anahtarları Yönet', callback_data: 'files_keys' }],
+                    ],
+                },
+            });
+        }
+
+        // Eşleştirme sistemi
+        if (data === 'files_mapping') {
+            const mappingCount = Object.keys(productMapping).length;
+            return filesBot.sendMessage(chatId, `**🔗 Ürün Eşleştirme**\n\n📊 Toplam eşleştirme: ${mappingCount}`, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '🏪 Shop Ürünü Seç', callback_data: 'files_map_select_shop' }],
+                        [{ text: '📋 Mevcut Eşleştirmeler', callback_data: 'files_map_list' }],
+                        [{ text: '🔙 Geri', callback_data: 'files_back' }],
+                    ],
+                },
+            });
+        }
+
+        if (data === 'files_map_select_shop') {
+            const shopData = loadProducts();
+            const buttons = [];
+            
+            for (const prodKey in shopData.products || {}) {
+                const prod = shopData.products[prodKey];
+                const shortName = prod.name.length > 28 ? prod.name.substring(0, 28) + '...' : prod.name;
+                const mapped = productMapping[prod.name] ? '✅' : '❌';
+                buttons.push([{ text: `${mapped} ${shortName}`, callback_data: `files_map_shop_${prodKey.substring(0, 25)}` }]);
+            }
+            
+            if (buttons.length === 0) {
+                return filesBot.sendMessage(chatId, '❌ Shop bot\'ta ürün bulunamadı.', {
+                    reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'files_mapping' }]] }
+                });
+            }
+            
+            buttons.push([{ text: '🔙 Geri', callback_data: 'files_mapping' }]);
+            
+            return filesBot.sendMessage(chatId, '**🏪 Shop Ürünleri**\n\n✅ Eşleştirilmiş | ❌ Eşleştirilmemiş', {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: buttons.slice(0, 15) },
+            });
+        }
+
+        if (data.startsWith('files_map_shop_')) {
+            const searchKey = data.substring(15);
+            const shopData = loadProducts();
+            let selectedProduct = null;
+            
+            for (const prodKey in shopData.products || {}) {
+                if (prodKey.startsWith(searchKey)) {
+                    selectedProduct = shopData.products[prodKey];
+                    break;
+                }
+            }
+            
+            if (!selectedProduct) return filesBot.sendMessage(chatId, '❌ Ürün bulunamadı.');
+            
+            filesAdminState[chatId] = { action: 'mapping', shopProduct: selectedProduct.name };
+            
+            const currentMappings = productMapping[selectedProduct.name] || [];
+            const currentList = currentMappings.length > 0 ? currentMappings.join('\n') : '(Yok)';
+            
+            return filesBot.sendMessage(chatId, `**🔗 ${selectedProduct.name}**\n\n📁 Mevcut:\n${currentList}`, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '➕ Menü Ekle', callback_data: 'files_map_add_menu' }],
+                        [{ text: '➖ Menü Çıkar', callback_data: 'files_map_remove_menu' }],
+                        [{ text: '🗑 Tümünü Sil', callback_data: 'files_map_clear' }],
+                        [{ text: '🔙 Geri', callback_data: 'files_mapping' }],
+                    ],
+                },
+            });
+        }
+
+        if (data === 'files_map_add_menu') {
+            const shopProduct = filesAdminState[chatId]?.shopProduct;
+            if (!shopProduct) return filesBot.sendMessage(chatId, '❌ Önce bir ürün seçin.');
+            
+            const filesMenus = Array.from(filesProductUploads.keys());
+            if (filesMenus.length === 0) {
+                return filesBot.sendMessage(chatId, '❌ Henüz Files menüsü yok.');
+            }
+            
+            const buttons = filesMenus.map(name => [{ text: `📁 ${name.substring(0, 25)}`, callback_data: `files_map_addm_${name.substring(0, 20)}` }]);
+            buttons.push([{ text: '🔙 İptal', callback_data: 'files_mapping' }]);
+            
+            return filesBot.sendMessage(chatId, '**➕ Menü Ekle**', {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: buttons.slice(0, 12) },
+            });
+        }
+
+        if (data.startsWith('files_map_addm_')) {
+            const shopProduct = filesAdminState[chatId]?.shopProduct;
+            if (!shopProduct) return filesBot.sendMessage(chatId, '❌ Önce bir ürün seçin.');
+            
+            const searchName = data.substring(15);
+            let filesMenu = null;
+            for (const name of filesProductUploads.keys()) {
+                if (name.startsWith(searchName)) {
+                    filesMenu = name;
+                    break;
+                }
+            }
+            
+            if (!filesMenu) return filesBot.sendMessage(chatId, '❌ Menü bulunamadı.');
+            
+            if (!productMapping[shopProduct]) productMapping[shopProduct] = [];
+            if (!productMapping[shopProduct].includes(filesMenu)) {
+                productMapping[shopProduct].push(filesMenu);
+                saveProductMapping();
+            }
+            
+            return filesBot.sendMessage(chatId, `✅ **${filesMenu}** → **${shopProduct}** eşleştirildi!`, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'files_mapping' }]] }
+            });
+        }
+
+        if (data === 'files_map_remove_menu') {
+            const shopProduct = filesAdminState[chatId]?.shopProduct;
+            if (!shopProduct) return filesBot.sendMessage(chatId, '❌ Önce bir ürün seçin.');
+            
+            const currentMappings = productMapping[shopProduct] || [];
+            if (currentMappings.length === 0) {
+                return filesBot.sendMessage(chatId, '❌ Eşleştirme yok.');
+            }
+            
+            const buttons = currentMappings.map(name => [{ text: `❌ ${name.substring(0, 25)}`, callback_data: `files_map_remm_${name.substring(0, 20)}` }]);
+            buttons.push([{ text: '🔙 İptal', callback_data: 'files_mapping' }]);
+            
+            return filesBot.sendMessage(chatId, '**➖ Menü Çıkar**', {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: buttons },
+            });
+        }
+
+        if (data.startsWith('files_map_remm_')) {
+            const shopProduct = filesAdminState[chatId]?.shopProduct;
+            if (!shopProduct) return filesBot.sendMessage(chatId, '❌ Önce bir ürün seçin.');
+            
+            const searchName = data.substring(15);
+            const currentMappings = productMapping[shopProduct] || [];
+            
+            let filesMenu = null;
+            for (const name of currentMappings) {
+                if (name.startsWith(searchName)) {
+                    filesMenu = name;
+                    break;
+                }
+            }
+            
+            if (!filesMenu) return filesBot.sendMessage(chatId, '❌ Menü bulunamadı.');
+            
+            const idx = productMapping[shopProduct].indexOf(filesMenu);
+            if (idx > -1) {
+                productMapping[shopProduct].splice(idx, 1);
+                if (productMapping[shopProduct].length === 0) delete productMapping[shopProduct];
+                saveProductMapping();
+            }
+            
+            return filesBot.sendMessage(chatId, `✅ **${filesMenu}** çıkarıldı!`, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'files_mapping' }]] }
+            });
+        }
+
+        if (data === 'files_map_clear') {
+            const shopProduct = filesAdminState[chatId]?.shopProduct;
+            if (!shopProduct) return filesBot.sendMessage(chatId, '❌ Önce bir ürün seçin.');
+            
+            delete productMapping[shopProduct];
+            saveProductMapping();
+            
+            return filesBot.sendMessage(chatId, `✅ Tüm eşleştirmeler silindi!`, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'files_mapping' }]] }
+            });
+        }
+
+        if (data === 'files_map_list') {
+            const mappings = Object.entries(productMapping);
+            
+            if (mappings.length === 0) {
+                return filesBot.sendMessage(chatId, '📋 Henüz eşleştirme yok.', {
+                    reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'files_mapping' }]] }
+                });
+            }
+            
+            let text = '**📋 Mevcut Eşleştirmeler**\n\n';
+            mappings.forEach(([shopProd, filesMenus], i) => {
+                text += `**${i + 1}. ${shopProd.substring(0, 30)}**\n`;
+                filesMenus.forEach(menu => text += `   → ${menu}\n`);
+                text += '\n';
+            });
+            
+            return filesBot.sendMessage(chatId, text, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'files_mapping' }]] }
+            });
+        }
+    });
+
+    // FILES BOT: Anahtar girişi ve menü erişimi
+    filesBot.on('message', (msg) => {
+        const chatId = msg.chat.id;
+        const text = msg.text?.trim();
+        const session = filesUserSessions.get(chatId);
+
+        // Anahtar doğrulama
+        if (session && session.step === 'awaiting_key' && text && !text.startsWith('/')) {
+            const keyInfo = getKeyInfo(text);
+            if (keyInfo) {
+                const purchasedProducts = keyInfo.products || [];
+                const daysLeft = Math.ceil((keyInfo.expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+                
+                const accessibleMenus = [];
+                for (const shopProduct of purchasedProducts) {
+                    const mappedMenus = getFilesMenusForShopProduct(shopProduct);
+                    if (mappedMenus.length > 0) {
+                        mappedMenus.forEach(menu => {
+                            if (!accessibleMenus.includes(menu)) accessibleMenus.push(menu);
+                        });
+                    } else {
+                        if (!accessibleMenus.includes(shopProduct)) accessibleMenus.push(shopProduct);
+                    }
+                }
+                
+                filesUserSessions.set(chatId, { 
+                    step: 'validated', 
+                    key: text, 
+                    products: purchasedProducts,
+                    accessibleMenus: accessibleMenus,
+                    expiresAt: keyInfo.expiresAt
+                });
+                
+                const keyboard = [];
+                for (let i = 0; i < accessibleMenus.length; i += 2) {
+                    const row = [accessibleMenus[i]];
+                    if (accessibleMenus[i + 1]) row.push(accessibleMenus[i + 1]);
+                    keyboard.push(row);
+                }
+                
+                const menu = {
+                    reply_markup: {
+                        keyboard,
+                        resize_keyboard: true,
+                        one_time_keyboard: false
+                    }
+                };
+                
+                const productList = accessibleMenus.map((p, i) => `${i + 1}. ${p}`).join('\n');
+                const welcomeMsg = `✅ **Anahtar Doğrulandı!**\n\n📦 **Ürünler:**\n${productList}\n\n📅 **Kalan:** ${daysLeft} gün\n\nAşağıdan ürün seçin 👇`;
+                
+                filesSendAndDelete('sendMessage', chatId, welcomeMsg, { ...menu, parse_mode: 'Markdown' });
+            } else {
+                filesSendAndDelete('sendMessage', chatId, '❌ Geçersiz veya süresi dolmuş anahtar.');
+            }
+            return;
+        }
+
+        // Ürün seçimi
+        if (session && session.step === 'validated' && text && !text.startsWith('/')) {
+            const accessibleMenus = session.accessibleMenus || [];
+            
+            if (!accessibleMenus.includes(text)) {
+                filesSendAndDelete('sendMessage', chatId, `⚠️ Bu ürüne erişim yetkiniz yok.`, { parse_mode: 'Markdown' });
+                return;
+            }
+            
+            if (filesProductUploads.has(text)) {
+                const product = filesProductUploads.get(text);
+
+                if (product.description) {
+                    if (typeof product.description === 'string') {
+                        filesSendAndDelete('sendMessage', chatId, product.description);
+                    } else if (product.description.type === 'photo') {
+                        filesSendAndDelete('sendPhoto', chatId, product.description.file_id, {
+                            caption: product.description.caption
+                        });
+                    }
+                }
+
+                if (product.files && product.files.length > 0) {
+                    product.files.forEach(file => {
+                        if (file.type === 'document') {
+                            filesSendAndDelete('sendDocument', chatId, file.file_id);
+                        } else if (file.type === 'video') {
+                            filesSendAndDelete('sendVideo', chatId, file.file_id);
+                        } else if (file.type === 'photo') {
+                            filesSendAndDelete('sendPhoto', chatId, file.file_id);
+                        }
+                    });
+                } else {
+                    filesSendAndDelete('sendMessage', chatId, '📁 Bu ürün için henüz dosya eklenmemiş.');
+                }
+            }
+        }
+    });
+
+    // FILES BOT: Dosya yükleme (admin)
+    filesBot.on('document', (msg) => {
+        if (msg.from.id !== ADMIN_ID) return;
+        const state = filesAdminState[msg.chat.id];
+        if (!state || state.action !== 'add_file') return;
+        
+        const productName = state.currentProduct;
+        if (!productName || !filesProductUploads.has(productName)) return;
+
+        filesProductUploads.get(productName).files.push({ type: 'document', file_id: msg.document.file_id });
+        saveFilesProducts();
+        filesBot.sendMessage(msg.chat.id, `✅ Dosya eklendi: ${msg.document.file_name || 'belge'}`);
+    });
+
+    filesBot.on('video', (msg) => {
+        if (msg.from.id !== ADMIN_ID) return;
+        const state = filesAdminState[msg.chat.id];
+        if (!state || state.action !== 'add_file') return;
+        
+        const productName = state.currentProduct;
+        if (!productName || !filesProductUploads.has(productName)) return;
+
+        filesProductUploads.get(productName).files.push({ type: 'video', file_id: msg.video.file_id });
+        saveFilesProducts();
+        filesBot.sendMessage(msg.chat.id, '✅ Video eklendi.');
+    });
+
+    filesBot.on('photo', (msg) => {
+        if (msg.from.id !== ADMIN_ID) return;
+        const state = filesAdminState[msg.chat.id];
+        
+        if (state?.action === 'edit_desc') {
+            const productName = state.currentProduct;
+            if (!productName || !filesProductUploads.has(productName)) return;
+            
+            const largestPhoto = msg.photo[msg.photo.length - 1];
+            filesProductUploads.get(productName).description = { 
+                type: 'photo', 
+                file_id: largestPhoto.file_id, 
+                caption: msg.caption || '' 
+            };
+            saveFilesProducts();
+            delete filesAdminState[msg.chat.id];
+            return filesBot.sendMessage(msg.chat.id, '✅ Açıklama (fotoğraf) kaydedildi.');
+        }
+        
+        if (state?.action === 'add_file') {
+            const productName = state.currentProduct;
+            if (!productName || !filesProductUploads.has(productName)) return;
+            
+            const largestPhoto = msg.photo[msg.photo.length - 1];
+            filesProductUploads.get(productName).files.push({ type: 'photo', file_id: largestPhoto.file_id });
+            saveFilesProducts();
+            filesBot.sendMessage(msg.chat.id, '✅ Fotoğraf eklendi.');
+        }
+    });
+
+    // FILES BOT: Admin mesaj handler
+    filesBot.on('message', (msg) => {
+        if (msg.from.id !== ADMIN_ID) return;
+        if (msg.text?.startsWith('/')) return;
+        if (msg.document || msg.video || msg.photo) return;
+        
+        const chatId = msg.chat.id;
+        const text = (msg.text || '').trim();
+        const state = filesAdminState[chatId];
+        
+        if (!state) return;
+
+        if (state.action === 'key_search') {
+            const orderId = findOrderIdByKey(text);
+            if (orderId) {
+                const entry = activeKeys[orderId];
+                const products = entry.products || [];
+                const daysLeft = Math.ceil((entry.expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+                const productList = products.length > 0 ? products.map((p, i) => `${i + 1}. ${p}`).join('\n') : '(Ürün yok)';
+                
+                filesAdminState[chatId] = { action: 'key_manage', orderId: orderId };
+                
+                return filesBot.sendMessage(chatId, `**🔑 Anahtar Bulundu!**\n\n🔐 \`${entry.key}\`\n👤 ID: ${entry.chatId}\n📅 ${daysLeft} gün\n\n📦 **Ürünler:**\n${productList}`, {
+                    parse_mode: 'Markdown',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: '➕ Ürün Ekle', callback_data: 'files_key_add_prod' }],
+                            [{ text: '➖ Ürün Çıkar', callback_data: 'files_key_remove_prod' }],
+                            [{ text: '🔙 Geri', callback_data: 'files_keys' }],
+                        ],
+                    },
+                });
+            } else {
+                delete filesAdminState[chatId];
+                return filesBot.sendMessage(chatId, '❌ Anahtar bulunamadı.', {
+                    reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'files_keys' }]] }
+                });
+            }
+        }
+
+        if (state.action === 'add_product') {
+            if (!text) return filesBot.sendMessage(chatId, '❌ Geçersiz ürün adı.');
+            if (filesProductUploads.has(text)) return filesBot.sendMessage(chatId, '⚠️ Bu ürün zaten mevcut.');
+            
+            filesProductUploads.set(text, { description: '', files: [] });
+            saveFilesProducts();
+            filesAdminState[chatId] = { currentProduct: text };
+            
+            return filesBot.sendMessage(chatId, `✅ **${text}** oluşturuldu!`, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '📄 Açıklama Ekle', callback_data: 'files_edit_desc' }],
+                        [{ text: '📁 Dosya Ekle', callback_data: 'files_add_file' }],
+                        [{ text: '🔙 Menüye Dön', callback_data: 'files_back' }],
+                    ],
+                },
+            });
+        }
+
+        if (state.action === 'edit_desc') {
+            const productName = state.currentProduct;
+            if (!productName || !filesProductUploads.has(productName)) return;
+            
+            filesProductUploads.get(productName).description = text;
+            saveFilesProducts();
+            delete filesAdminState[chatId];
+            return filesBot.sendMessage(chatId, `✅ **${productName}** açıklaması kaydedildi.`, { parse_mode: 'Markdown' });
+        }
+
+        if (state.action === 'add_file' && text.toLowerCase() === 'tamam') {
+            const productName = state.currentProduct;
+            const product = filesProductUploads.get(productName);
+            const fileCount = product?.files?.length || 0;
+            const isUpdate = state.isUpdate;
+            
+            if (isUpdate) {
+                filesAdminState[chatId] = { currentProduct: productName, isUpdate: true, pendingNotification: true };
+                return filesBot.sendMessage(chatId, `✅ ${fileCount} dosya eklendi.`, {
+                    parse_mode: 'Markdown',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: '📄 Açıklama Ekle', callback_data: 'files_edit_desc' }],
+                            [{ text: '📢 Müşterilere Bildir', callback_data: 'files_send_notification' }],
+                            [{ text: '✅ Bildirimsiz Tamamla', callback_data: 'files_back' }],
+                        ],
+                    },
+                });
+            }
+            
+            delete filesAdminState[chatId];
+            return filesBot.sendMessage(chatId, `✅ ${fileCount} dosya kaydedildi.`, { parse_mode: 'Markdown' });
+        }
+    });
+
+    console.log('Files bot handlers registered.');
+}
