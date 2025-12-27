@@ -362,7 +362,7 @@ bot.on("callback_query", (query) => {
         const productName = data.substring(8);
         const category = userState[chatId];
         if (!category || !products[category][productName]) {
-            return bot.sendMessage(chatId, "Ürün bulunamadı.");
+            return bot.sendMessage(chatId, "⚠️ Oturum zaman aşımına uğradı.\n\nBotu başlatmak için /start yazın.");
         }
 
         users[chatId] = { category, product: productName };
@@ -415,7 +415,7 @@ bot.on("callback_query", (query) => {
     ) {
         const selected = users[chatId];
         if (!selected)
-            return bot.sendMessage(chatId, "Lütfen önce bir ürün seçin.");
+            return bot.sendMessage(chatId, "⚠️ Oturum zaman aşımına uğradı.\n\nBotu başlatmak için /start yazın.");
 
         let message = "";
         if (data === "pay_iban") {
