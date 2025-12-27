@@ -928,6 +928,147 @@ if (filesBot) {
         filesSendAndDelete('sendMessage', chatId, '🔐 Lütfen ürün anahtarınızı girin:');
     });
 
+    // FILES BOT: Admin state
+    const filesAdminState = {};
+
+    // FILES BOT: /admin paneli
+    filesBot.onText(/\/admin/, (msg) => {
+        const chatId = msg.chat.id;
+        if (chatId !== ADMIN_ID) return filesBot.sendMessage(chatId, "Yetkisiz.");
+
+        const productCount = filesProductUploads.size;
+        filesBot.sendMessage(chatId, `**📁 Files Bot Admin Paneli**\n\nToplam ürün: ${productCount}`, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '📦 Ürünleri Yönet', callback_data: 'files_products' }],
+                    [{ text: '➕ Yeni Ürün Ekle', callback_data: 'files_add_product' }],
+                    [{ text: '🔑 Anahtarları Yönet', callback_data: 'files_keys' }],
+                ],
+            },
+        });
+    });
+
+    // FILES BOT: Callback handler
+    filesBot.on('callback_query', (query) => {
+        const chatId = query.from.id;
+        const data = query.data;
+        try { filesBot.answerCallbackQuery(query.id).catch(()=>{}); } catch (e) {}
+
+        if (chatId !== ADMIN_ID) return;
+
+        // Ürünleri listele
+        if (data === 'files_products') {
+            const products = Array.from(filesProductUploads.keys());
+            if (products.length === 0) {
+                return filesBot.sendMessage(chatId, '📦 Henüz ürün yok. "➕ Yeni Ürün Ekle" ile ekleyin.');
+            }
+            const buttons = products.map(name => {
+                const p = filesProductUploads.get(name);
+                const fileCount = p.files ? p.files.length : 0;
+                return [{ text: `📦 ${name} (${fileCount} dosya)`, callback_data: `files_prod_${name.substring(0, 30)}` }];
+            });
+            buttons.push([{ text: '🔙 Geri', callback_data: 'files_back' }]);
+            return filesBot.sendMessage(chatId, '**📦 Ürünler:**', {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: buttons },
+            });
+        }
+
+        // Ürün detayı
+        if (data.startsWith('files_prod_')) {
+            const searchName = data.substring(11);
+            let productName = null;
+            for (const name of filesProductUploads.keys()) {
+                if (name.startsWith(searchName) || name === searchName) {
+                    productName = name;
+                    break;
+                }
+            }
+            if (!productName) return filesBot.sendMessage(chatId, '❌ Ürün bulunamadı.');
+
+            const product = filesProductUploads.get(productName);
+            const fileCount = product.files ? product.files.length : 0;
+            const hasDesc = product.description ? '✅' : '❌';
+
+            filesAdminState[chatId] = { currentProduct: productName };
+
+            return filesBot.sendMessage(chatId, `**📦 ${productName}**\n\n📄 Açıklama: ${hasDesc}\n📁 Dosya sayısı: ${fileCount}`, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '📄 Açıklama Ekle/Düzenle', callback_data: 'files_edit_desc' }],
+                        [{ text: '📁 Dosya Ekle', callback_data: 'files_add_file' }],
+                        [{ text: '🗑 Ürünü Sil', callback_data: 'files_delete_prod' }],
+                        [{ text: '🔙 Geri', callback_data: 'files_products' }],
+                    ],
+                },
+            });
+        }
+
+        // Yeni ürün ekle
+        if (data === 'files_add_product') {
+            filesAdminState[chatId] = { action: 'add_product' };
+            return filesBot.sendMessage(chatId, '📦 **Yeni Ürün Ekleme**\n\nÜrün adını yazın:', { parse_mode: 'Markdown' });
+        }
+
+        // Açıklama düzenle
+        if (data === 'files_edit_desc') {
+            const productName = filesAdminState[chatId]?.currentProduct;
+            if (!productName) return filesBot.sendMessage(chatId, '❌ Önce bir ürün seçin.');
+            filesAdminState[chatId] = { action: 'edit_desc', currentProduct: productName };
+            return filesBot.sendMessage(chatId, `📄 **${productName}** için açıklama yazın:\n\n(Metin veya fotoğraf+caption gönderebilirsiniz)`, { parse_mode: 'Markdown' });
+        }
+
+        // Dosya ekle
+        if (data === 'files_add_file') {
+            const productName = filesAdminState[chatId]?.currentProduct;
+            if (!productName) return filesBot.sendMessage(chatId, '❌ Önce bir ürün seçin.');
+            filesAdminState[chatId] = { action: 'add_file', currentProduct: productName };
+            return filesBot.sendMessage(chatId, `📁 **${productName}** için dosya gönderin:\n\n(Belge, video veya fotoğraf gönderebilirsiniz)\n\nBitirince "tamam" yazın.`, { parse_mode: 'Markdown' });
+        }
+
+        // Ürün sil
+        if (data === 'files_delete_prod') {
+            const productName = filesAdminState[chatId]?.currentProduct;
+            if (!productName) return filesBot.sendMessage(chatId, '❌ Önce bir ürün seçin.');
+            filesProductUploads.delete(productName);
+            saveFilesProducts();
+            delete filesAdminState[chatId];
+            return filesBot.sendMessage(chatId, `✅ **${productName}** silindi.`, { parse_mode: 'Markdown' });
+        }
+
+        // Anahtarları yönet - Shop bot'a yönlendir
+        if (data === 'files_keys') {
+            const keyCount = Object.keys(activeKeys).length;
+            const keyList = Object.values(activeKeys).slice(0, 5);
+            let text = `**🔑 Aktif Anahtarlar** (${keyCount} adet)\n\n`;
+            keyList.forEach((entry, i) => {
+                const daysLeft = Math.ceil((entry.expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+                text += `${i + 1}. \`${entry.key}\` - ${daysLeft > 0 ? daysLeft + ' gün' : 'Süresi dolmuş'}\n`;
+            });
+            if (keyCount > 5) text += `\n... ve ${keyCount - 5} anahtar daha`;
+            text += '\n\n💡 Anahtar eklemek için Shop Bot\'ta /admin → Anahtarları Yönet';
+            return filesBot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
+        }
+
+        // Geri
+        if (data === 'files_back') {
+            delete filesAdminState[chatId];
+            const productCount = filesProductUploads.size;
+            return filesBot.sendMessage(chatId, `**📁 Files Bot Admin Paneli**\n\nToplam ürün: ${productCount}`, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '📦 Ürünleri Yönet', callback_data: 'files_products' }],
+                        [{ text: '➕ Yeni Ürün Ekle', callback_data: 'files_add_product' }],
+                        [{ text: '🔑 Anahtarları Yönet', callback_data: 'files_keys' }],
+                    ],
+                },
+            });
+        }
+    });
+
     // FILES BOT: Anahtar girişi ve menü erişimi
     filesBot.on('message', (msg) => {
         const chatId = msg.chat.id;
@@ -1044,55 +1185,115 @@ if (filesBot) {
         filesSendAndDelete('sendMessage', msg.chat.id, `🗑 '${productName}' menüden silindi.`);
     });
 
-    // FILES BOT: Dosya yükleme (admin)
+    // FILES BOT: Dosya yükleme (admin) - Admin panel state ile çalışır
     filesBot.on('document', (msg) => {
         if (msg.from.id !== ADMIN_ID) return;
-        const lastProduct = Array.from(filesProductUploads.keys()).pop();
-        if (!lastProduct) return;
+        const state = filesAdminState[msg.chat.id];
+        if (!state || state.action !== 'add_file') return;
+        
+        const productName = state.currentProduct;
+        if (!productName || !filesProductUploads.has(productName)) return;
 
-        filesProductUploads.get(lastProduct).files.push({ type: 'document', file_id: msg.document.file_id });
+        filesProductUploads.get(productName).files.push({ type: 'document', file_id: msg.document.file_id });
         saveFilesProducts();
+        filesBot.sendMessage(msg.chat.id, `✅ Dosya eklendi: ${msg.document.file_name || 'belge'}`);
     });
 
     filesBot.on('video', (msg) => {
         if (msg.from.id !== ADMIN_ID) return;
-        const lastProduct = Array.from(filesProductUploads.keys()).pop();
-        if (!lastProduct) return;
+        const state = filesAdminState[msg.chat.id];
+        if (!state || state.action !== 'add_file') return;
+        
+        const productName = state.currentProduct;
+        if (!productName || !filesProductUploads.has(productName)) return;
 
-        filesProductUploads.get(lastProduct).files.push({ type: 'video', file_id: msg.video.file_id });
+        filesProductUploads.get(productName).files.push({ type: 'video', file_id: msg.video.file_id });
         saveFilesProducts();
+        filesBot.sendMessage(msg.chat.id, '✅ Video eklendi.');
     });
 
     filesBot.on('photo', (msg) => {
         if (msg.from.id !== ADMIN_ID) return;
-        const lastProduct = Array.from(filesProductUploads.keys()).pop();
-        if (!lastProduct) return;
-
-        const largestPhoto = msg.photo[msg.photo.length - 1];
-        filesProductUploads.get(lastProduct).files.push({ type: 'photo', file_id: largestPhoto.file_id });
-        saveFilesProducts();
+        const state = filesAdminState[msg.chat.id];
+        
+        // Açıklama için fotoğraf mı, dosya için fotoğraf mı?
+        if (state?.action === 'edit_desc') {
+            const productName = state.currentProduct;
+            if (!productName || !filesProductUploads.has(productName)) return;
+            
+            const largestPhoto = msg.photo[msg.photo.length - 1];
+            filesProductUploads.get(productName).description = { 
+                type: 'photo', 
+                file_id: largestPhoto.file_id, 
+                caption: msg.caption || '' 
+            };
+            saveFilesProducts();
+            delete filesAdminState[msg.chat.id];
+            return filesBot.sendMessage(msg.chat.id, '✅ Açıklama (fotoğraf) kaydedildi.');
+        }
+        
+        if (state?.action === 'add_file') {
+            const productName = state.currentProduct;
+            if (!productName || !filesProductUploads.has(productName)) return;
+            
+            const largestPhoto = msg.photo[msg.photo.length - 1];
+            filesProductUploads.get(productName).files.push({ type: 'photo', file_id: largestPhoto.file_id });
+            saveFilesProducts();
+            filesBot.sendMessage(msg.chat.id, '✅ Fotoğraf eklendi.');
+        }
     });
 
-    // FILES BOT: Açıklama ekleme (admin)
+    // FILES BOT: Admin mesaj handler (ürün adı, açıklama, tamam)
     filesBot.on('message', (msg) => {
         if (msg.from.id !== ADMIN_ID) return;
         if (msg.text?.startsWith('/')) return;
+        if (msg.document || msg.video || msg.photo) return; // Dosyalar yukarıda işleniyor
         
-        const lastProduct = Array.from(filesProductUploads.keys()).pop();
-        if (!lastProduct) return;
+        const chatId = msg.chat.id;
+        const text = (msg.text || '').trim();
+        const state = filesAdminState[chatId];
+        
+        if (!state) return;
 
-        const product = filesProductUploads.get(lastProduct);
-        if (product.description !== '') return; // Zaten açıklama varsa atla
+        // Yeni ürün ekleme - ürün adı
+        if (state.action === 'add_product') {
+            if (!text) return filesBot.sendMessage(chatId, '❌ Geçersiz ürün adı.');
+            if (filesProductUploads.has(text)) return filesBot.sendMessage(chatId, '⚠️ Bu ürün zaten mevcut.');
+            
+            filesProductUploads.set(text, { description: '', files: [] });
+            saveFilesProducts();
+            filesAdminState[chatId] = { currentProduct: text };
+            
+            return filesBot.sendMessage(chatId, `✅ **${text}** oluşturuldu!\n\nŞimdi ne yapmak istiyorsunuz?`, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '📄 Açıklama Ekle', callback_data: 'files_edit_desc' }],
+                        [{ text: '📁 Dosya Ekle', callback_data: 'files_add_file' }],
+                        [{ text: '🔙 Menüye Dön', callback_data: 'files_back' }],
+                    ],
+                },
+            });
+        }
 
-        if (msg.photo && msg.caption) {
-            product.description = { type: 'photo', file_id: msg.photo[msg.photo.length - 1].file_id, caption: msg.caption };
+        // Açıklama ekleme
+        if (state.action === 'edit_desc') {
+            const productName = state.currentProduct;
+            if (!productName || !filesProductUploads.has(productName)) return;
+            
+            filesProductUploads.get(productName).description = text;
             saveFilesProducts();
-        } else if (msg.photo && !msg.caption) {
-            product.description = { type: 'photo', file_id: msg.photo[msg.photo.length - 1].file_id, caption: '' };
-            saveFilesProducts();
-        } else if (msg.text) {
-            product.description = msg.text;
-            saveFilesProducts();
+            delete filesAdminState[chatId];
+            return filesBot.sendMessage(chatId, `✅ **${productName}** açıklaması kaydedildi.`, { parse_mode: 'Markdown' });
+        }
+
+        // Dosya ekleme bitir
+        if (state.action === 'add_file' && text.toLowerCase() === 'tamam') {
+            const productName = state.currentProduct;
+            const product = filesProductUploads.get(productName);
+            const fileCount = product?.files?.length || 0;
+            delete filesAdminState[chatId];
+            return filesBot.sendMessage(chatId, `✅ **${productName}** için ${fileCount} dosya kaydedildi.`, { parse_mode: 'Markdown' });
         }
     });
 
