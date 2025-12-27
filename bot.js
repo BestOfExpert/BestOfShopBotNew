@@ -41,6 +41,129 @@ function escapeHtml(text) {
 const PRODUCTS_FILE = path.join(__dirname, 'products_new.json');
 const PAYMENT_FILE = path.join(__dirname, 'payment_settings.json');
 const KEYS_FILE = path.join(__dirname, 'keys.json');
+const LOGS_FILE = path.join(__dirname, 'logs.json');
+const VIP_FILE = path.join(__dirname, 'vip_customers.json');
+
+// ============== LOG SİSTEMİ ==============
+function loadLogs() {
+    try {
+        if (fs.existsSync(LOGS_FILE)) {
+            return JSON.parse(fs.readFileSync(LOGS_FILE, 'utf-8'));
+        }
+    } catch (e) {}
+    return [];
+}
+
+function saveLogs(logs) {
+    fs.writeFileSync(LOGS_FILE, JSON.stringify(logs, null, 2), 'utf-8');
+}
+
+function addLog(type, details) {
+    const logs = loadLogs();
+    logs.unshift({
+        id: Date.now(),
+        type: type, // 'sale', 'key_sent', 'renewal', 'vip_upgrade', 'admin_action', 'payment'
+        details: details,
+        timestamp: new Date().toISOString()
+    });
+    // Son 500 logu tut
+    if (logs.length > 500) logs.length = 500;
+    saveLogs(logs);
+}
+
+// ============== SADAKAT SİSTEMİ ==============
+const LOYALTY_FILE = path.join(__dirname, 'loyalty_settings.json');
+
+function loadLoyaltySettings() {
+    try {
+        if (fs.existsSync(LOYALTY_FILE)) {
+            return JSON.parse(fs.readFileSync(LOYALTY_FILE, 'utf-8'));
+        }
+    } catch (e) {}
+    return {
+        pointRate: 4, // Alışveriş tutarının %4'ü kadar puan kazanılır
+        enabled: true
+    };
+}
+
+function saveLoyaltySettings(settings) {
+    fs.writeFileSync(LOYALTY_FILE, JSON.stringify(settings, null, 2), 'utf-8');
+}
+
+let loyaltySettings = loadLoyaltySettings();
+
+function loadVipCustomers() {
+    try {
+        if (fs.existsSync(VIP_FILE)) {
+            return JSON.parse(fs.readFileSync(VIP_FILE, 'utf-8'));
+        }
+    } catch (e) {}
+    return {};
+}
+
+function saveVipCustomers(data) {
+    fs.writeFileSync(VIP_FILE, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+let vipCustomers = loadVipCustomers();
+
+// Müşteri puanını getir
+function getCustomerPoints(userId) {
+    const customer = vipCustomers[userId];
+    if (!customer) return 0;
+    return customer.points || 0;
+}
+
+// Puan kullan
+function useCustomerPoints(userId, pointsToUse) {
+    const customer = vipCustomers[userId];
+    if (!customer || (customer.points || 0) < pointsToUse) return false;
+    
+    customer.points = (customer.points || 0) - pointsToUse;
+    customer.usedPoints = (customer.usedPoints || 0) + pointsToUse;
+    saveVipCustomers(vipCustomers);
+    return true;
+}
+
+// Sadakat puanı hesapla ve güncelle (alışveriş sonrası)
+function addLoyaltyPoints(userId, chatId, spentAmount) {
+    if (!vipCustomers[userId]) {
+        vipCustomers[userId] = {
+            chatId: chatId,
+            purchases: 0,
+            totalSpent: 0,
+            points: 0,
+            usedPoints: 0,
+            joinDate: new Date().toISOString()
+        };
+    }
+    
+    const customer = vipCustomers[userId];
+    customer.chatId = chatId;
+    customer.purchases = (customer.purchases || 0) + 1;
+    customer.totalSpent = (customer.totalSpent || 0) + spentAmount;
+    customer.lastPurchase = Date.now();
+    
+    // Puan ekle (tutarın %4'ü kadar puan - 1 puan = 1 TL)
+    const pointRate = loyaltySettings.pointRate || 4;
+    const earnedPoints = Math.floor(spentAmount * pointRate / 100);
+    customer.points = (customer.points || 0) + earnedPoints;
+    
+    saveVipCustomers(vipCustomers);
+    return { earnedPoints, totalPoints: customer.points, purchases: customer.purchases };
+}
+
+function getVipInfo(userId) {
+    return vipCustomers[userId] || null;
+}
+
+function getLoyaltyBadge(purchases) {
+    if (purchases >= 10) return '🥇 VIP Gold';
+    if (purchases >= 5) return '🥈 VIP Silver';
+    if (purchases >= 3) return '🥉 VIP Bronze';
+    if (purchases >= 1) return '⭐ Üye';
+    return '👤 Yeni';
+}
 
 // ============== ÖDEME AYARLARI ==============
 const DEFAULT_PAYMENT_SETTINGS = {
@@ -319,33 +442,54 @@ function showPaymentMethods(chatId, productKey, days, messageId = null) {
     const price = product.prices?.[days] || 0;
     const symbol = data.settings?.currency_symbol || "₺";
     
+    // Müşterinin sadakat puanını kontrol et
+    const customerPoints = getCustomerPoints(chatId.toString());
+    
     // Kullanıcı bilgisini kaydet
     userState[chatId] = {
         productKey,
         productName: product.name,
         days,
         price,
+        originalPrice: price,
+        usedPoints: 0,
         step: 'payment_selection'
     };
     
-    const text = `💳 **Ödeme Yöntemi Seçin**
+    let text = `💳 <b>Ödeme Yöntemi Seçin</b>
 
-📦 **Ürün:** ${product.name}
-⏱ **Süre:** ${days} Gün
-💰 **Fiyat:** ${price}${symbol}
-
-Hangi ödeme yöntemini kullanmak istiyorsunuz?`;
+📦 <b>Ürün:</b> ${product.name}
+⏱ <b>Süre:</b> ${days} Gün
+💰 <b>Fiyat:</b> ${price}${symbol}`;
+    
+    // Sadakat puanı bilgisi
+    const buttons = [];
+    
+    if (customerPoints > 0) {
+        // Kullanılabilecek maksimum puan (fiyatı aşamaz)
+        const maxUsablePoints = Math.min(customerPoints, price);
+        text += `\n\n━━━━━━━━━━━━━━━━━━━━`;
+        text += `\n⭐ <b>Sadakat Puanınız:</b> ${customerPoints} puan`;
+        text += `\n💎 <b>Kullanılabilir:</b> ${maxUsablePoints} TL indirim`;
+        
+        buttons.push([{ text: `⭐ ${maxUsablePoints} Puan Kullan (-${maxUsablePoints}${symbol})`, callback_data: `use_points_${productKey}_${days}` }]);
+    } else {
+        text += `\n\n━━━━━━━━━━━━━━━━━━━━`;
+        text += `\n⭐ <i>Sadakat puanınız bulunmuyor.</i>`;
+        text += `\n<i>💡 Bu alışverişte ${Math.floor(price * (loyaltySettings.pointRate || 4) / 100)} puan kazanacaksınız!</i>`;
+    }
+    
+    text += `\n━━━━━━━━━━━━━━━━━━━━`;
+    text += `\n\nÖdeme yöntemi seçin:`;
+    
+    buttons.push([{ text: "💸 IBAN ile Öde", callback_data: "pay_iban" }]);
+    buttons.push([{ text: "🏦 Papara ile Öde", callback_data: "pay_papara" }]);
+    buttons.push([{ text: "💰 Binance (USDT) ile Öde", callback_data: "pay_binance" }]);
+    buttons.push([{ text: "🔙 Geri", callback_data: `prod_${productKey}` }]);
     
     const opts = {
-        parse_mode: "Markdown",
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: "💸 IBAN ile Öde", callback_data: "pay_iban" }],
-                [{ text: "🏦 Papara ile Öde", callback_data: "pay_papara" }],
-                [{ text: "💰 Binance (USDT) ile Öde", callback_data: "pay_binance" }],
-                [{ text: "🔙 Geri", callback_data: `prod_${productKey}` }]
-            ]
-        }
+        parse_mode: "HTML",
+        reply_markup: { inline_keyboard: buttons }
     };
     
     if (messageId) {
@@ -442,6 +586,59 @@ bot.onText(/\/start/, (msg) => {
     showMainMenu(chatId);
 });
 
+// ============== /PUAN KOMUTU ==============
+bot.onText(/\/puan/, (msg) => {
+    const chatId = msg.chat.id;
+    const userId = chatId.toString();
+    const customer = vipCustomers[userId];
+    
+    if (!customer || (customer.points || 0) === 0) {
+        return bot.sendMessage(chatId, `⭐ <b>Sadakat Puanlarınız</b>
+
+📊 Mevcut Puanınız: <b>0 puan</b>
+💰 Kullanılabilir İndirim: <b>0 TL</b>
+
+━━━━━━━━━━━━━━━━━━━━
+
+<i>💡 Her alışverişte ödediğiniz tutarın %${loyaltySettings.pointRate || 4}'ü kadar puan kazanırsınız!</i>
+<i>🎁 1 Puan = 1 TL indirim olarak kullanılabilir.</i>
+
+Puan kazanmak için alışveriş yapın! 🛒`, { parse_mode: 'HTML' });
+    }
+    
+    const points = customer.points || 0;
+    const totalSpent = customer.totalSpent || 0;
+    const purchases = customer.purchases || 0;
+    const usedPoints = customer.usedPoints || 0;
+    const badge = getLoyaltyBadge(purchases);
+    
+    return bot.sendMessage(chatId, `⭐ <b>Sadakat Puanlarınız</b>
+
+${badge}
+
+━━━━━━━━━━━━━━━━━━━━
+
+💎 <b>Mevcut Puanınız:</b> <code>${points}</code> puan
+💰 <b>Kullanılabilir İndirim:</b> <code>${points}</code> TL
+
+━━━━━━━━━━━━━━━━━━━━
+
+📊 <b>İstatistikler:</b>
+📦 Toplam Alışveriş: ${purchases}
+💵 Toplam Harcama: ${totalSpent.toLocaleString('tr-TR')} TL
+🎁 Kullanılan Puan: ${usedPoints} puan
+
+━━━━━━━━━━━━━━━━━━━━
+
+<i>💡 Her alışverişte ödediğiniz tutarın %${loyaltySettings.pointRate || 4}'ü kadar puan kazanırsınız!</i>
+<i>🎁 1 Puan = 1 TL indirim olarak kullanılabilir.</i>`, { 
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [[{ text: "🛒 Alışverişe Başla", callback_data: "back_main" }]]
+        }
+    });
+});
+
 // ============== /ADMIN KOMUTU ==============
 bot.onText(/\/admin/, (msg) => {
     const chatId = msg.chat.id;
@@ -452,7 +649,15 @@ bot.onText(/\/admin/, (msg) => {
 });
 
 function showAdminPanel(chatId, messageId = null) {
+    const logs = loadLogs();
+    const totalCustomers = Object.keys(vipCustomers).length;
+    const loyaltyCustomers = Object.values(vipCustomers).filter(v => (v.purchases || 0) >= 1).length;
+    
     const text = `🔧 **Admin Paneli**
+
+📊 Müşteri: ${totalCustomers} | ⭐ Sadakat Üyesi: ${loyaltyCustomers}
+🎁 İndirim Oranı: %${loyaltySettings.discountRate || 4}
+📋 Son işlem: ${logs.length > 0 ? new Date(logs[0].timestamp).toLocaleString('tr-TR') : 'Yok'}
 
 Yapmak istediğiniz işlemi seçin:`;
     
@@ -468,7 +673,10 @@ Yapmak istediğiniz işlemi seçin:`;
                 [{ text: "⏱ Süre Seçenekleri", callback_data: "admin_durations" }],
                 [{ text: "💳 Ödeme Ayarları", callback_data: "admin_payment" }],
                 [{ text: "🔑 Anahtarlar", callback_data: "admin_keys" }],
-                [{ text: "📢 Duyuru Gönder", callback_data: "admin_announce" }]
+                [{ text: "📢 Duyuru Gönder", callback_data: "admin_announce" }],
+                [{ text: "⭐ Sadakat Sistemi", callback_data: "admin_loyalty" }],
+                [{ text: "👥 Müşteri Listesi", callback_data: "admin_vip" }],
+                [{ text: "📋 İşlem Logları", callback_data: "admin_logs" }]
             ]
         }
     };
@@ -560,6 +768,116 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
         const days = parseInt(parts.pop());
         const productKey = parts.join("_");
         return showPaymentMethods(chatId, productKey, days, messageId);
+    }
+    
+    // Sadakat puanı kullanma
+    if (data.startsWith("use_points_")) {
+        const parts = data.substring(11).split("_");
+        const days = parseInt(parts.pop());
+        const productKey = parts.join("_");
+        
+        const productsData = loadProducts();
+        const product = productsData.products[productKey];
+        if (!product) return showMainMenu(chatId, messageId);
+        
+        const price = product.prices?.[days] || 0;
+        const customerPoints = getCustomerPoints(chatId.toString());
+        const maxUsablePoints = Math.min(customerPoints, price);
+        const newPrice = price - maxUsablePoints;
+        const symbol = productsData.settings?.currency_symbol || "₺";
+        
+        const text = `⭐ <b>Sadakat Puanı Kullanımı</b>
+
+📦 <b>Ürün:</b> ${product.name}
+⏱ <b>Süre:</b> ${days} Gün
+
+━━━━━━━━━━━━━━━━━━━━
+
+💰 <b>Orijinal Fiyat:</b> ${price}${symbol}
+⭐ <b>Kullanılacak Puan:</b> ${maxUsablePoints} puan
+🎁 <b>İndirim:</b> -${maxUsablePoints}${symbol}
+
+━━━━━━━━━━━━━━━━━━━━
+
+✨ <b>Ödenecek Tutar:</b> <code>${newPrice}${symbol}</code>
+
+━━━━━━━━━━━━━━━━━━━━
+
+<b>${maxUsablePoints} puanınızı kullanarak ${maxUsablePoints}${symbol} indirim almak istiyor musunuz?</b>`;
+        
+        return bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: "✅ Evet, Puanımı Kullan", callback_data: `confirm_points_${productKey}_${days}` }],
+                    [{ text: "❌ Hayır, Normal Fiyat", callback_data: `buy_${productKey}_${days}` }],
+                    [{ text: "🔙 Geri", callback_data: `prod_${productKey}` }]
+                ]
+            }
+        });
+    }
+    
+    // Puan kullanımını onayla
+    if (data.startsWith("confirm_points_")) {
+        const parts = data.substring(15).split("_");
+        const days = parseInt(parts.pop());
+        const productKey = parts.join("_");
+        
+        const productsData = loadProducts();
+        const product = productsData.products[productKey];
+        if (!product) return showMainMenu(chatId, messageId);
+        
+        const price = product.prices?.[days] || 0;
+        const customerPoints = getCustomerPoints(chatId.toString());
+        const usedPoints = Math.min(customerPoints, price);
+        const newPrice = price - usedPoints;
+        const symbol = productsData.settings?.currency_symbol || "₺";
+        
+        // Kullanıcı state'i güncelle
+        userState[chatId] = {
+            productKey,
+            productName: product.name,
+            days,
+            price: newPrice,
+            originalPrice: price,
+            usedPoints: usedPoints,
+            step: 'payment_selection'
+        };
+        
+        let text = `💳 <b>Ödeme Yöntemi Seçin</b>
+
+📦 <b>Ürün:</b> ${product.name}
+⏱ <b>Süre:</b> ${days} Gün
+
+━━━━━━━━━━━━━━━━━━━━
+⭐ <b>Kullanılan Puan:</b> ${usedPoints} puan
+🎁 <b>Puan İndirimi:</b> -${usedPoints}${symbol}
+━━━━━━━━━━━━━━━━━━━━
+
+💰 <b>Ödenecek Tutar:</b> <code>${newPrice}${symbol}</code>
+<s>Orijinal: ${price}${symbol}</s>`;
+        
+        if (newPrice === 0) {
+            text += `\n\n🎉 <b>Tüm tutarı puanlarınızla karşılıyorsunuz!</b>\n<i>Onay için admin'e bildirim gönderilecek.</i>`;
+        }
+        
+        text += `\n\nÖdeme yöntemi seçin:`;
+        
+        const buttons = [
+            [{ text: "💸 IBAN ile Öde", callback_data: "pay_iban" }],
+            [{ text: "🏦 Papara ile Öde", callback_data: "pay_papara" }],
+            [{ text: "💰 Binance (USDT) ile Öde", callback_data: "pay_binance" }],
+            [{ text: "🔙 Geri", callback_data: `prod_${productKey}` }]
+        ];
+        
+        return bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: buttons }
+        });
     }
     
     // Ödeme yöntemi seçimi - zaman aşımı kontrolü
@@ -918,6 +1236,234 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
             reply_markup: {
                 inline_keyboard: [[{ text: "🔙 İptal", callback_data: "admin_announce" }]]
             }
+        });
+    }
+    
+    // ============== SADAKAT SİSTEMİ AYARLARI ==============
+    if (data === "admin_loyalty") {
+        if (chatId !== ADMIN_ID) return;
+        
+        const settings = loyaltySettings;
+        const status = settings.enabled ? "✅ Aktif" : "❌ Pasif";
+        
+        const text = `⭐ <b>Sadakat Puanı Sistemi</b>\n\n📊 <b>Durum:</b> ${status}\n🎁 <b>Puan Kazanma Oranı:</b> %${settings.pointRate || 4}\n💰 <b>1 Puan = 1₺</b>\n\n<i>Müşteriler aldıkları tutarın %${settings.pointRate || 4}'ü kadar puan kazanır.\nBiriken puanları sonraki alışverişlerinde TL olarak kullanabilirler.</i>`;
+        
+        const keyboard = [
+            [{ text: `${settings.enabled ? '❌ Pasif Yap' : '✅ Aktif Yap'}`, callback_data: "loyalty_toggle" }],
+            [{ text: "📝 Puan Oranı Değiştir", callback_data: "loyalty_set_rate" }],
+            [{ text: "🔙 Admin Panel", callback_data: "admin_panel" }]
+        ];
+        
+        return bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: keyboard }
+        }).catch(() => bot.sendMessage(chatId, text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard }}));
+    }
+    
+    // Sadakat sistemi aç/kapat
+    if (data === "loyalty_toggle") {
+        if (chatId !== ADMIN_ID) return;
+        
+        loyaltySettings.enabled = !loyaltySettings.enabled;
+        saveLoyaltySettings(loyaltySettings);
+        addLog('admin_action', `⭐ Sadakat sistemi ${loyaltySettings.enabled ? 'aktif' : 'pasif'} yapıldı`);
+        
+        // Paneli yeniden göster
+        return bot.answerCallbackQuery(query.id, { text: `Sadakat sistemi ${loyaltySettings.enabled ? 'aktif' : 'pasif'} edildi!` }).then(() => {
+            const settings = loyaltySettings;
+            const status = settings.enabled ? "✅ Aktif" : "❌ Pasif";
+            
+            const text = `⭐ <b>Sadakat Puanı Sistemi</b>\n\n📊 <b>Durum:</b> ${status}\n🎁 <b>Puan Kazanma Oranı:</b> %${settings.pointRate || 4}\n💰 <b>1 Puan = 1₺</b>`;
+            
+            const keyboard = [
+                [{ text: `${settings.enabled ? '❌ Pasif Yap' : '✅ Aktif Yap'}`, callback_data: "loyalty_toggle" }],
+                [{ text: "📝 Puan Oranı Değiştir", callback_data: "loyalty_set_rate" }],
+                [{ text: "🔙 Admin Panel", callback_data: "admin_panel" }]
+            ];
+            
+            return bot.editMessageText(text, {
+                chat_id: chatId,
+                message_id: messageId,
+                parse_mode: 'HTML',
+                reply_markup: { inline_keyboard: keyboard }
+            });
+        }).catch(() => {});
+    }
+    
+    // Puan oranı değiştir
+    if (data === "loyalty_set_rate") {
+        if (chatId !== ADMIN_ID) return;
+        
+        adminState[chatId] = { action: 'set_loyalty_rate' };
+        
+        return bot.sendMessage(chatId, `📝 <b>Puan Kazanma Oranı Değiştir</b>\n\nMevcut oran: <b>%${loyaltySettings.pointRate || 4}</b>\n\n1-50 arası bir değer girin (örn: 4 = alışverişin %4'ü kadar puan):`, {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [[{ text: "🔙 İptal", callback_data: "admin_loyalty" }]]
+            }
+        });
+    }
+    
+    // ============== MÜŞTERİ LİSTESİ PANELİ ==============
+    if (data === "admin_vip") {
+        if (chatId !== ADMIN_ID) return;
+        
+        const vipData = loadVipCustomers();
+        const vipList = Object.entries(vipData);
+        
+        // İstatistikler
+        const totalCustomers = vipList.length;
+        const goldCount = vipList.filter(([_, v]) => (v.purchases || 0) >= 10).length;
+        const silverCount = vipList.filter(([_, v]) => (v.purchases || 0) >= 5 && (v.purchases || 0) < 10).length;
+        const bronzeCount = vipList.filter(([_, v]) => (v.purchases || 0) >= 3 && (v.purchases || 0) < 5).length;
+        const memberCount = vipList.filter(([_, v]) => (v.purchases || 0) >= 1 && (v.purchases || 0) < 3).length;
+        const totalSpent = vipList.reduce((sum, [_, v]) => sum + (v.totalSpent || 0), 0);
+        const totalPoints = vipList.reduce((sum, [_, v]) => sum + (v.points || 0), 0);
+        
+        const text = `👥 <b>Müşteri Listesi</b>\n\n📊 <b>İstatistikler:</b>\n👥 Toplam Müşteri: <b>${totalCustomers}</b>\n🥇 Gold (10+ alım): <b>${goldCount}</b>\n🥈 Silver (5+ alım): <b>${silverCount}</b>\n🥉 Bronze (3+ alım): <b>${bronzeCount}</b>\n⭐ Üye (1+ alım): <b>${memberCount}</b>\n\n💰 Toplam Harcama: <b>${totalSpent.toLocaleString('tr-TR')} TL</b>\n⭐ Toplam Puan: <b>${totalPoints.toLocaleString('tr-TR')}</b>\n\n<i>Puan kazanma oranı: %${loyaltySettings.pointRate || 4} (1 puan = 1₺)</i>`;
+        
+        const keyboard = [
+            [{ text: "🥇 Gold (10+ alım)", callback_data: "vip_list_gold" }],
+            [{ text: "🥈 Silver (5+ alım)", callback_data: "vip_list_silver" }],
+            [{ text: "🥉 Bronze (3+ alım)", callback_data: "vip_list_bronze" }],
+            [{ text: "⭐ Tüm Üyeler", callback_data: "vip_list_all" }],
+            [{ text: "🔙 Admin Panel", callback_data: "admin_panel" }]
+        ];
+        
+        return bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: keyboard }
+        }).catch(() => bot.sendMessage(chatId, text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard }}));
+    }
+    
+    // Müşteri listesi görüntüle
+    if (data.startsWith("vip_list_")) {
+        if (chatId !== ADMIN_ID) return;
+        
+        const level = data.substring(9);
+        const vipData = loadVipCustomers();
+        let vipList = Object.entries(vipData);
+        
+        let title = "⭐ Tüm Üyeler";
+        if (level === "gold") {
+            vipList = vipList.filter(([_, v]) => (v.purchases || 0) >= 10);
+            title = "🥇 Gold Müşteriler";
+        } else if (level === "silver") {
+            vipList = vipList.filter(([_, v]) => (v.purchases || 0) >= 5 && (v.purchases || 0) < 10);
+            title = "🥈 Silver Müşteriler";
+        } else if (level === "bronze") {
+            vipList = vipList.filter(([_, v]) => (v.purchases || 0) >= 3 && (v.purchases || 0) < 5);
+            title = "🥉 Bronze Müşteriler";
+        }
+        
+        // Son alıma göre sırala
+        vipList.sort((a, b) => (b[1].lastPurchase || 0) - (a[1].lastPurchase || 0));
+        
+        if (vipList.length === 0) {
+            return bot.editMessageText(`${title}\n\n❌ Bu kategoride müşteri bulunmuyor.`, {
+                chat_id: chatId,
+                message_id: messageId,
+                reply_markup: { inline_keyboard: [[{ text: "🔙 Müşteri Listesi", callback_data: "admin_vip" }]] }
+            });
+        }
+        
+        // İlk 15 müşteriyi göster
+        const displayList = vipList.slice(0, 15);
+        let text = `<b>${title}</b>\n\n`;
+        
+        displayList.forEach(([userId, data], i) => {
+            const badge = getLoyaltyBadge(data.purchases || 0);
+            const spent = (data.totalSpent || 0).toLocaleString('tr-TR');
+            const points = (data.points || 0).toLocaleString('tr-TR');
+            text += `${i + 1}. <code>${userId}</code> ${badge}\n   📦 ${data.purchases || 0} alım | 💰 ${spent} TL | ⭐ ${points} puan\n\n`;
+        });
+        
+        if (vipList.length > 15) {
+            text += `\n<i>...ve ${vipList.length - 15} müşteri daha</i>`;
+        }
+        
+        return bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [[{ text: "🔙 Müşteri Listesi", callback_data: "admin_vip" }]] }
+        });
+    }
+    
+    // ============== İŞLEM LOGLARI PANELİ ==============
+    if (data === "admin_logs") {
+        if (chatId !== ADMIN_ID) return;
+        
+        const logs = loadLogs();
+        
+        // Log türlerini say
+        const typeCounts = {};
+        logs.forEach(log => {
+            typeCounts[log.type] = (typeCounts[log.type] || 0) + 1;
+        });
+        
+        const text = `📋 <b>İşlem Logları</b>\n\n📊 <b>Toplam:</b> ${logs.length} kayıt\n\n<b>Türlere Göre:</b>\n💰 Satış: ${typeCounts.sale || 0}\n🔑 Anahtar Gönderimi: ${typeCounts.key_sent || 0}\n🔄 Yenileme: ${typeCounts.renewal || 0}\n👑 VIP Yükseltme: ${typeCounts.vip_upgrade || 0}\n⚙️ Admin İşlemi: ${typeCounts.admin_action || 0}\n💳 Ödeme: ${typeCounts.payment || 0}`;
+        
+        const keyboard = [
+            [{ text: "📜 Son 20 Log", callback_data: "logs_recent_20" }],
+            [{ text: "💰 Satış Logları", callback_data: "logs_type_sale" }],
+            [{ text: "🔑 Anahtar Logları", callback_data: "logs_type_key_sent" }],
+            [{ text: "⚙️ Admin Logları", callback_data: "logs_type_admin_action" }],
+            [{ text: "🔙 Admin Panel", callback_data: "admin_panel" }]
+        ];
+        
+        return bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: keyboard }
+        }).catch(() => bot.sendMessage(chatId, text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: keyboard }}));
+    }
+    
+    // Log listesi görüntüle
+    if (data.startsWith("logs_recent_") || data.startsWith("logs_type_")) {
+        if (chatId !== ADMIN_ID) return;
+        
+        let logs = loadLogs();
+        let title = "📜 Son İşlemler";
+        
+        if (data.startsWith("logs_recent_")) {
+            const count = parseInt(data.substring(12));
+            logs = logs.slice(0, count);
+            title = `📜 Son ${count} İşlem`;
+        } else if (data.startsWith("logs_type_")) {
+            const type = data.substring(10);
+            logs = logs.filter(l => l.type === type).slice(0, 20);
+            const typeNames = { sale: "💰 Satış", key_sent: "🔑 Anahtar", renewal: "🔄 Yenileme", vip_upgrade: "👑 VIP", admin_action: "⚙️ Admin", payment: "💳 Ödeme" };
+            title = `${typeNames[type] || type} Logları`;
+        }
+        
+        if (logs.length === 0) {
+            return bot.editMessageText(`${title}\n\n❌ Bu kategoride log bulunmuyor.`, {
+                chat_id: chatId,
+                message_id: messageId,
+                reply_markup: { inline_keyboard: [[{ text: "🔙 Loglar", callback_data: "admin_logs" }]] }
+            });
+        }
+        
+        let text = `<b>${title}</b>\n\n`;
+        
+        logs.forEach((log, i) => {
+            const date = new Date(log.timestamp).toLocaleString('tr-TR');
+            const typeEmojis = { sale: "💰", key_sent: "🔑", renewal: "🔄", vip_upgrade: "👑", admin_action: "⚙️", payment: "💳" };
+            const emoji = typeEmojis[log.type] || "📝";
+            text += `${emoji} <code>${date}</code>\n${log.details}\n\n`;
+        });
+        
+        return bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [[{ text: "🔙 Loglar", callback_data: "admin_logs" }]] }
         });
     }
     
@@ -1787,6 +2333,26 @@ bot.on("message", (msg) => {
         const state = adminState[chatId];
         console.log(`Admin state aktif: ${state.action}, text: ${text}`);
         
+        // Sadakat puan oranı değiştir
+        if (state.action === 'set_loyalty_rate') {
+            const rate = parseInt(text);
+            if (isNaN(rate) || rate < 1 || rate > 50) {
+                return bot.sendMessage(chatId, "❌ Geçersiz değer! 1-50 arası bir sayı girin.");
+            }
+            
+            loyaltySettings.pointRate = rate;
+            saveLoyaltySettings(loyaltySettings);
+            addLog('admin_action', `⭐ Sadakat puan kazanma oranı %${rate} olarak ayarlandı`);
+            
+            delete adminState[chatId];
+            return bot.sendMessage(chatId, `✅ Puan kazanma oranı <b>%${rate}</b> olarak ayarlandı!\n\n<i>Müşteriler artık aldıkları tutarın %${rate}'ü kadar puan kazanacak.</i>`, {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [[{ text: "🔙 Sadakat Ayarları", callback_data: "admin_loyalty" }]]
+                }
+            });
+        }
+        
         // Anahtar gönderimi - format: anahtar süre (örn: the_best1 30)
         if (state.action === 'send_key') {
             const userId = state.targetUserId;
@@ -1867,6 +2433,39 @@ Satın aldığınız anahtar ile @BestOfModFiles_bot botuna gidip anahtarınız�
 📅 Süre: <b>${days} gün</b>
 
 ✨ Müşteriye bildirim gönderildi.`, { parse_mode: 'HTML' });
+            
+            // Sadakat sistemini güncelle
+            const originalPrice = state.price || 0;
+            const usedPoints = state.usedPoints || 0;
+            const paidPrice = originalPrice - usedPoints; // Ödenen gerçek tutar
+            
+            // Kullanılan puanları düş
+            if (usedPoints > 0) {
+                useCustomerPoints(userId, usedPoints);
+            }
+            
+            // Yeni puan ekle (ödenen tutarın %4'ü)
+            const loyaltyResult = addLoyaltyPoints(userId, parseInt(userId), paidPrice);
+            
+            // Sadakat bildirimi gönder
+            const badge = getLoyaltyBadge(loyaltyResult.purchases);
+            let loyaltyMsg = `🎉 <b>Tebrikler! Puan Kazandınız!</b>\n\n`;
+            loyaltyMsg += `${badge}\n\n`;
+            
+            if (usedPoints > 0) {
+                loyaltyMsg += `💳 Kullanılan puan: <b>${usedPoints} puan (${usedPoints}₺ indirim)</b>\n`;
+            }
+            
+            loyaltyMsg += `⭐ Kazanılan puan: <b>+${loyaltyResult.earnedPoints} puan</b>\n`;
+            loyaltyMsg += `📊 Güncel bakiye: <b>${loyaltyResult.totalPoints} puan</b>\n`;
+            loyaltyMsg += `📦 Toplam alışveriş: <b>${loyaltyResult.purchases}</b>\n\n`;
+            loyaltyMsg += `💡 <i>1 puan = 1₺ değerindedir. Bir sonraki alışverişinizde kullanabilirsiniz!</i>`;
+            
+            bot.sendMessage(userId, loyaltyMsg, { parse_mode: 'HTML' }).catch(() => {});
+            
+            // Log ekle
+            const usedPointsLog = usedPoints > 0 ? ` | 🎁 -${usedPoints} puan kullanıldı` : '';
+            addLog('key_sent', `👤 ${userId} | 📦 ${state.productName} | 🔑 ${key} | ⏱ ${days} gün | 💰 ${originalPrice}₺ (ödenen: ${paidPrice}₺)${usedPointsLog} | ⭐ +${loyaltyResult.earnedPoints} puan`);
             
             // Siparişi pendingOrders'dan sil
             if (state.orderId) {
@@ -2311,8 +2910,16 @@ ${state.productName ? `📦 <b>Ürün:</b> ${state.productName}\n\n` : ''}${mess
             productName: sel.productName,
             days: sel.days,
             price: sel.price,
+            originalPrice: sel.originalPrice || sel.price,
+            usedPoints: sel.usedPoints || 0,
             timestamp: Date.now()
         };
+        
+        // Puan kullanımı bilgisi
+        let pointsInfo = "";
+        if (sel.usedPoints && sel.usedPoints > 0) {
+            pointsInfo = `\n⭐ <b>Kullanılan Puan:</b> ${sel.usedPoints} puan (-${sel.usedPoints}₺)`;
+        }
         
         bot.forwardMessage(ADMIN_ID, chatId, msg.message_id).then((fwd) => {
             bot.sendMessage(ADMIN_ID, `🛒 <b>Yeni Sipariş Bildirimi</b>
@@ -2320,7 +2927,8 @@ ${state.productName ? `📦 <b>Ürün:</b> ${state.productName}\n\n` : ''}${mess
 👤 Kullanıcı: <code>${chatId}</code>
 📦 Ürün: <b>${sel.productName}</b>
 ⏱ Süre: <b>${sel.days} gün</b>
-💰 Fiyat: <b>${sel.price}₺</b>
+💰 Orijinal Fiyat: <b>${sel.originalPrice || sel.price}₺</b>${pointsInfo}
+✨ Ödenecek: <b>${sel.price}₺</b>
 
 📋 Dekont yukarıda. Kontrol edip onaylıyor musunuz?`, {
                 parse_mode: "HTML",
@@ -2335,6 +2943,12 @@ ${state.productName ? `📦 <b>Ürün:</b> ${state.productName}\n\n` : ''}${mess
                 }
             });
         }).catch(() => {});
+        
+        // Satış log'u
+        const logText = sel.usedPoints > 0 
+            ? `💳 Dekont: ${chatId} | ${sel.productName} | ${sel.days} gün | ${sel.price}₺ | ⭐ ${sel.usedPoints} puan kullanıldı`
+            : `💳 Dekont: ${chatId} | ${sel.productName} | ${sel.days} gün | ${sel.price}₺`;
+        addLog('payment', logText);
         
         bot.sendMessage(chatId, `📤 <b>Dekontunuz Alındı!</b>
 
@@ -2388,22 +3002,31 @@ function checkExpiringKeys() {
         const entry = activeKeys[orderId];
         const timeLeft = entry.expiresAt - now;
         
+        // 1 gün kala - hatırlatma
         if (timeLeft > 0 && timeLeft <= oneDayMs && !entry.notified) {
             const prods = entry.products || [];
             const productList = prods.length > 0 ? prods.join(', ') : 'Ürününüz';
             
-            bot.sendMessage(entry.chatId, `⚠️ **Süre Hatırlatması**
+            bot.sendMessage(entry.chatId, `⚠️ <b>Süre Hatırlatması!</b>
 
-🔑 Anahtarınız: \`${entry.key}\`
+🔑 Anahtarınız: <code>${entry.key}</code>
 📦 Ürün: ${productList}
 
-⏰ **Süreniz yarın bitiyor!**
+⏰ <b>Süreniz yarın bitiyor!</b>
 
-Tekrar almak isterseniz /start yazarak uzatabilirsiniz. 🛒`, { parse_mode: 'Markdown' }).catch(() => {});
+Yenilemek için ana menüden ürünü seçebilirsiniz.`, { 
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: "🏠 Ana Menü", callback_data: "back_main" }]
+                    ]
+                }
+            }).catch(() => {});
             entry.notified = true;
             changed = true;
         }
         
+        // 7 gün geçmiş anahtarları sil
         if (timeLeft < -7 * oneDayMs) {
             delete activeKeys[orderId];
             changed = true;
