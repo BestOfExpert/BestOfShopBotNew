@@ -656,6 +656,296 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
         return bot.sendMessage(chatId, "Lütfen yeni açıklamayı gönderin:");
     }
     
+    // ========== KATEGORİ YÖNETİMİ ==========
+    
+    // Kategori ekle
+    if (data === "admin_add_cat") {
+        adminState[chatId] = { action: 'add_category', step: 'name' };
+        return bot.sendMessage(chatId, `➕ **Yeni Kategori Ekleme**\n\nKategori adını yazın:\n\nÖrnek: \`📱 Mobil Modlar\``, { parse_mode: 'Markdown' });
+    }
+    
+    // Alt kategori ekle - önce ana kategori seç
+    if (data === "admin_add_subcat") {
+        const prodData = loadProducts();
+        const categories = prodData.categories || {};
+        const catKeys = Object.keys(categories);
+        
+        if (catKeys.length === 0) {
+            return bot.sendMessage(chatId, "❌ Önce ana kategori eklemeniz gerekiyor.");
+        }
+        
+        const buttons = catKeys.map(key => [{
+            text: `${categories[key].icon || '📁'} ${categories[key].name}`,
+            callback_data: `admin_subcat_select_${key}`
+        }]);
+        buttons.push([{ text: "🔙 Geri", callback_data: "admin_categories" }]);
+        
+        return bot.sendMessage(chatId, "Alt kategori eklenecek ana kategoriyi seçin:", {
+            reply_markup: { inline_keyboard: buttons }
+        });
+    }
+    
+    // Alt kategori için ana kategori seçildi
+    if (data.startsWith("admin_subcat_select_")) {
+        const catKey = data.substring(20);
+        adminState[chatId] = { action: 'add_subcategory', step: 'name', categoryKey: catKey };
+        return bot.sendMessage(chatId, `➕ **Yeni Alt Kategori Ekleme**\n\nAlt kategori adını yazın:\n\nÖrnek: \`🤖 Android\``, { parse_mode: 'Markdown' });
+    }
+    
+    // Kategori düzenleme menüsü
+    if (data === "admin_edit_cat_menu") {
+        const prodData = loadProducts();
+        const categories = prodData.categories || {};
+        const catKeys = Object.keys(categories);
+        
+        if (catKeys.length === 0) {
+            return bot.sendMessage(chatId, "❌ Henüz kategori yok.");
+        }
+        
+        const buttons = catKeys.map(key => [{
+            text: `${categories[key].icon || '📁'} ${categories[key].name}`,
+            callback_data: `admin_cat_edit_${key}`
+        }]);
+        buttons.push([{ text: "🔙 Geri", callback_data: "admin_categories" }]);
+        
+        return bot.sendMessage(chatId, "Düzenlenecek kategoriyi seçin:", {
+            reply_markup: { inline_keyboard: buttons }
+        });
+    }
+    
+    // Kategori düzenleme detay
+    if (data.startsWith("admin_cat_edit_")) {
+        const catKey = data.substring(15);
+        const prodData = loadProducts();
+        const cat = prodData.categories[catKey];
+        if (!cat) return bot.sendMessage(chatId, "❌ Kategori bulunamadı.");
+        
+        const subKeys = Object.keys(cat.subcategories || {});
+        const subList = subKeys.map(sk => `  └ ${cat.subcategories[sk].icon || '📦'} ${cat.subcategories[sk].name}`).join('\n') || '  (Alt kategori yok)';
+        
+        return bot.sendMessage(chatId, `📁 **${cat.name}**\n\n**Alt Kategoriler:**\n${subList}`, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: "✏️ Adı Değiştir", callback_data: `admin_cat_rename_${catKey}` }],
+                    [{ text: "🎨 İkon Değiştir", callback_data: `admin_cat_icon_${catKey}` }],
+                    [{ text: "🗑 Kategoriyi Sil", callback_data: `admin_cat_delete_${catKey}` }],
+                    [{ text: "🔙 Geri", callback_data: "admin_edit_cat_menu" }]
+                ]
+            }
+        });
+    }
+    
+    // Kategori adını değiştir
+    if (data.startsWith("admin_cat_rename_")) {
+        const catKey = data.substring(17);
+        adminState[chatId] = { action: 'rename_category', categoryKey: catKey };
+        return bot.sendMessage(chatId, "Yeni kategori adını yazın:");
+    }
+    
+    // Kategori ikonu değiştir
+    if (data.startsWith("admin_cat_icon_")) {
+        const catKey = data.substring(15);
+        adminState[chatId] = { action: 'change_cat_icon', categoryKey: catKey };
+        return bot.sendMessage(chatId, "Yeni kategori ikonunu yazın (emoji):\n\nÖrnek: 📱 veya 💻", { parse_mode: 'Markdown' });
+    }
+    
+    // Kategori sil
+    if (data.startsWith("admin_cat_delete_")) {
+        const catKey = data.substring(17);
+        const prodData = loadProducts();
+        
+        // Kategorideki ürünleri kontrol et
+        const hasProducts = Object.values(prodData.products || {}).some(p => p.category === catKey);
+        if (hasProducts) {
+            return bot.sendMessage(chatId, "❌ Bu kategoride ürün var! Önce ürünleri başka kategoriye taşıyın veya silin.");
+        }
+        
+        delete prodData.categories[catKey];
+        saveProducts(prodData);
+        bot.sendMessage(chatId, "✅ Kategori silindi.");
+        return showAdminCategories(chatId);
+    }
+    
+    // ========== ÜRÜN DURUM DEĞİŞTİRME ==========
+    
+    // Ürünü aktif yap
+    if (data.startsWith("admin_status_active_")) {
+        const productKey = data.substring(20);
+        const prodData = loadProducts();
+        if (prodData.products[productKey]) {
+            prodData.products[productKey].maintenance = false;
+            saveProducts(prodData);
+            bot.sendMessage(chatId, "✅ Ürün aktif duruma alındı.");
+        }
+        return showAdminProductEdit(chatId, productKey);
+    }
+    
+    // Ürünü bakıma al
+    if (data.startsWith("admin_status_maint_")) {
+        const productKey = data.substring(19);
+        const prodData = loadProducts();
+        if (prodData.products[productKey]) {
+            prodData.products[productKey].maintenance = true;
+            saveProducts(prodData);
+            bot.sendMessage(chatId, "🔵 Ürün bakıma alındı.");
+        }
+        return showAdminProductEdit(chatId, productKey);
+    }
+    
+    // Ürünü stok yok olarak işaretle (bakıma al + stokları sıfırla)
+    if (data.startsWith("admin_status_nostock_")) {
+        const productKey = data.substring(21);
+        const prodData = loadProducts();
+        if (prodData.products[productKey]) {
+            prodData.products[productKey].maintenance = true;
+            // Stokları sıfırla
+            for (const days in prodData.products[productKey].stock) {
+                prodData.products[productKey].stock[days] = [];
+            }
+            saveProducts(prodData);
+            bot.sendMessage(chatId, "🔴 Ürün stok yok olarak işaretlendi ve bakıma alındı.");
+        }
+        return showAdminProductEdit(chatId, productKey);
+    }
+    
+    // Ürün ikonu değiştir
+    if (data.startsWith("admin_icon_")) {
+        const productKey = data.substring(11);
+        adminState[chatId] = { action: 'change_icon', productKey };
+        return bot.sendMessage(chatId, "Yeni ürün ikonunu yazın (emoji):\n\nÖrnek: 🎯 veya ⭐ veya 🔥", { parse_mode: 'Markdown' });
+    }
+    
+    // Ürün kategorisi değiştir
+    if (data.startsWith("admin_change_cat_")) {
+        const productKey = data.substring(17);
+        const prodData = loadProducts();
+        const categories = prodData.categories || {};
+        
+        const buttons = [];
+        for (const catKey in categories) {
+            const cat = categories[catKey];
+            for (const subKey in cat.subcategories || {}) {
+                const sub = cat.subcategories[subKey];
+                buttons.push([{
+                    text: `${cat.icon} ${cat.name} → ${sub.icon} ${sub.name}`,
+                    callback_data: `admin_setcat_${productKey}_${catKey}_${subKey}`
+                }]);
+            }
+        }
+        buttons.push([{ text: "🔙 Geri", callback_data: `admin_edit_${productKey}` }]);
+        
+        return bot.sendMessage(chatId, "Yeni kategori seçin:", {
+            reply_markup: { inline_keyboard: buttons }
+        });
+    }
+    
+    // Ürün kategorisi ayarla
+    if (data.startsWith("admin_setcat_")) {
+        const parts = data.substring(13).split("_");
+        const productKey = parts[0];
+        const catKey = parts[1];
+        const subKey = parts.slice(2).join("_");
+        
+        const prodData = loadProducts();
+        if (prodData.products[productKey]) {
+            prodData.products[productKey].category = catKey;
+            prodData.products[productKey].subcategory = subKey;
+            saveProducts(prodData);
+            bot.sendMessage(chatId, "✅ Ürün kategorisi değiştirildi.");
+        }
+        return showAdminProductEdit(chatId, productKey);
+    }
+    
+    // Ürün sırası değiştir
+    if (data.startsWith("admin_order_")) {
+        const productKey = data.substring(12);
+        const prodData = loadProducts();
+        const products = prodData.products || {};
+        const keys = Object.keys(products);
+        const currentIdx = keys.indexOf(productKey);
+        
+        return bot.sendMessage(chatId, `🔢 **Sıra Değiştir**\n\nMevcut sıra: ${currentIdx + 1}/${keys.length}\n\nYeni sıra numarasını yazın (1-${keys.length}):`, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: "⬆️ Yukarı", callback_data: `admin_move_up_${productKey}` },
+                        { text: "⬇️ Aşağı", callback_data: `admin_move_down_${productKey}` }
+                    ],
+                    [{ text: "🔙 Geri", callback_data: `admin_edit_${productKey}` }]
+                ]
+            }
+        });
+    }
+    
+    // Ürünü yukarı taşı
+    if (data.startsWith("admin_move_up_")) {
+        const productKey = data.substring(14);
+        const prodData = loadProducts();
+        const keys = Object.keys(prodData.products);
+        const idx = keys.indexOf(productKey);
+        
+        if (idx > 0) {
+            // Sırayı değiştir
+            const newProducts = {};
+            keys.forEach((k, i) => {
+                if (i === idx - 1) newProducts[productKey] = prodData.products[productKey];
+                else if (i === idx) newProducts[keys[idx - 1]] = prodData.products[keys[idx - 1]];
+                else newProducts[k] = prodData.products[k];
+            });
+            prodData.products = newProducts;
+            saveProducts(prodData);
+            bot.sendMessage(chatId, "⬆️ Ürün yukarı taşındı.");
+        }
+        return showAdminProductList(chatId);
+    }
+    
+    // Ürünü aşağı taşı
+    if (data.startsWith("admin_move_down_")) {
+        const productKey = data.substring(16);
+        const prodData = loadProducts();
+        const keys = Object.keys(prodData.products);
+        const idx = keys.indexOf(productKey);
+        
+        if (idx < keys.length - 1) {
+            // Sırayı değiştir
+            const newProducts = {};
+            keys.forEach((k, i) => {
+                if (i === idx) newProducts[keys[idx + 1]] = prodData.products[keys[idx + 1]];
+                else if (i === idx + 1) newProducts[productKey] = prodData.products[productKey];
+                else newProducts[k] = prodData.products[k];
+            });
+            prodData.products = newProducts;
+            saveProducts(prodData);
+            bot.sendMessage(chatId, "⬇️ Ürün aşağı taşındı.");
+        }
+        return showAdminProductList(chatId);
+    }
+    
+    // ========== YENİ ÜRÜN EKLEME ==========
+    
+    // Yeni ürün ekle
+    if (data === "admin_add_product") {
+        adminState[chatId] = { action: 'add_product', step: 'name' };
+        return bot.sendMessage(chatId, `➕ **Yeni Ürün Ekleme**\n\nÜrün adını yazın:\n\nÖrnek: \`Cyrax Mod\``, { parse_mode: 'Markdown' });
+    }
+    
+    // Yeni ürün kategori seçimi
+    if (data.startsWith("admin_newprod_cat_")) {
+        const parts = data.substring(18).split("_");
+        const catKey = parts[0];
+        const subKey = parts.slice(1).join("_");
+        
+        const state = adminState[chatId];
+        if (state && state.action === 'add_product') {
+            state.category = catKey;
+            state.subcategory = subKey;
+            state.step = 'description';
+            return bot.sendMessage(chatId, "📝 Ürün açıklamasını yazın:");
+        }
+    }
+
     // Admin - süre ekle
     if (data === "admin_add_duration") {
         adminState[chatId] = { action: 'add_duration' };
@@ -704,15 +994,17 @@ function showAdminCategories(chatId, messageId = null) {
     
     let text = `📁 **Kategori Yönetimi**\n\n`;
     
-    for (const catKey in categories) {
+    const catKeys = Object.keys(categories);
+    catKeys.forEach((catKey, idx) => {
         const cat = categories[catKey];
         text += `${cat.icon || '📁'} **${cat.name}**\n`;
-        for (const subKey in cat.subcategories || {}) {
+        const subKeys = Object.keys(cat.subcategories || {});
+        subKeys.forEach((subKey, subIdx) => {
             const sub = cat.subcategories[subKey];
             text += `  └ ${sub.icon || '📦'} ${sub.name}\n`;
-        }
+        });
         text += '\n';
-    }
+    });
     
     const opts = {
         parse_mode: "Markdown",
@@ -720,6 +1012,7 @@ function showAdminCategories(chatId, messageId = null) {
             inline_keyboard: [
                 [{ text: "➕ Kategori Ekle", callback_data: "admin_add_cat" }],
                 [{ text: "➕ Alt Kategori Ekle", callback_data: "admin_add_subcat" }],
+                [{ text: "✏️ Kategori Düzenle", callback_data: "admin_edit_cat_menu" }],
                 [{ text: "🔙 Geri", callback_data: "admin_back" }]
             ]
         }
@@ -738,14 +1031,28 @@ function showAdminProductList(chatId, messageId = null) {
     const data = loadProducts();
     const products = data.products || {};
     
-    const buttons = Object.entries(products).map(([key, prod]) => [{
-        text: `${prod.icon || '📦'} ${prod.name}${prod.maintenance ? ' (🔵)' : ''}`,
-        callback_data: `admin_edit_${key}`
-    }]);
+    const buttons = Object.entries(products).map(([key, prod]) => {
+        // Durum ikonu: 🟢 aktif, 🔵 bakımda, 🔴 stok yok
+        let statusIcon = '🟢';
+        if (prod.maintenance) statusIcon = '🔵';
+        else {
+            const hasStock = Object.values(prod.stock || {}).some(arr => arr && arr.length > 0);
+            if (!hasStock) statusIcon = '🔴';
+        }
+        return [{
+            text: `${statusIcon} ${prod.icon || '📦'} ${prod.name}`,
+            callback_data: `admin_edit_${key}`
+        }];
+    });
     
+    buttons.push([{ text: "➕ Yeni Ürün Ekle", callback_data: "admin_add_product" }]);
     buttons.push([{ text: "🔙 Geri", callback_data: "admin_back" }]);
     
-    const text = `📦 **Ürün Yönetimi**\n\nDüzenlemek istediğiniz ürünü seçin:`;
+    const text = `📦 **Ürün Yönetimi**
+
+🟢 Aktif | 🔵 Bakımda | 🔴 Stok Yok
+
+Düzenlemek istediğiniz ürünü seçin:`;
     
     const opts = {
         parse_mode: "Markdown",
@@ -770,10 +1077,22 @@ function showAdminProductEdit(chatId, productKey, messageId = null) {
         .map(([days, price]) => `${days} gün: ${price}₺`)
         .join('\n') || 'Fiyat yok';
     
+    // Durum ikonu
+    let statusIcon = '🟢 Aktif';
+    if (product.maintenance) statusIcon = '🔵 Bakımda';
+    else {
+        const hasStock = Object.values(product.stock || {}).some(arr => arr && arr.length > 0);
+        if (!hasStock) statusIcon = '🔴 Stok Yok';
+    }
+    
     const text = `📦 **${product.name}**
 
 📁 Kategori: ${product.category} / ${product.subcategory}
-🔵 Bakım: ${product.maintenance ? 'Evet' : 'Hayır'}
+📊 Durum: ${statusIcon}
+🎨 İkon: ${product.icon || '📦'}
+
+📝 **Açıklama:**
+${product.description || 'Açıklama yok'}
 
 💰 **Fiyatlar:**
 ${priceInfo}`;
@@ -782,9 +1101,16 @@ ${priceInfo}`;
         parse_mode: "Markdown",
         reply_markup: {
             inline_keyboard: [
+                [
+                    { text: "🟢 Aktif", callback_data: `admin_status_active_${productKey}` },
+                    { text: "🔵 Bakım", callback_data: `admin_status_maint_${productKey}` },
+                    { text: "🔴 Stok Yok", callback_data: `admin_status_nostock_${productKey}` }
+                ],
                 [{ text: "💰 Fiyatları Düzenle", callback_data: `admin_price_${productKey}` }],
                 [{ text: "📝 Açıklamayı Düzenle", callback_data: `admin_desc_${productKey}` }],
-                [{ text: product.maintenance ? "✅ Bakımdan Çıkar" : "🔵 Bakıma Al", callback_data: `admin_maint_${productKey}` }],
+                [{ text: "🎨 İkon Değiştir", callback_data: `admin_icon_${productKey}` }],
+                [{ text: "📁 Kategori Değiştir", callback_data: `admin_change_cat_${productKey}` }],
+                [{ text: "🔢 Sıra Değiştir", callback_data: `admin_order_${productKey}` }],
                 [{ text: "🗑 Ürünü Sil", callback_data: `admin_delete_${productKey}` }],
                 [{ text: "🔙 Geri", callback_data: "admin_products" }]
             ]
@@ -1173,35 +1499,170 @@ Satın aldığınız anahtar ile @BestOfModFiles_bot botuna gidip anahtarınız�
             return showAdminPayment(chatId);
         }
         
-        // Ürün ekleme wizard
+        // ========== KATEGORİ İŞLEMLERİ ==========
+        
+        // Kategori ekleme
+        if (state.action === 'add_category') {
+            if (state.step === 'name') {
+                // İkon ve ad parse et
+                const firstChar = text.charAt(0);
+                const isEmoji = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(firstChar);
+                
+                let icon = '📁';
+                let name = text;
+                if (isEmoji) {
+                    icon = text.split(' ')[0];
+                    name = text.split(' ').slice(1).join(' ') || text;
+                }
+                
+                const catKey = name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+                const data = loadProducts();
+                if (!data.categories) data.categories = {};
+                
+                data.categories[catKey] = {
+                    name: text,
+                    icon: icon,
+                    subcategories: {}
+                };
+                saveProducts(data);
+                
+                bot.sendMessage(chatId, `✅ "${text}" kategorisi eklendi.`);
+                delete adminState[chatId];
+                return showAdminCategories(chatId);
+            }
+        }
+        
+        // Alt kategori ekleme
+        if (state.action === 'add_subcategory') {
+            if (state.step === 'name') {
+                // İkon ve ad parse et
+                const firstChar = text.charAt(0);
+                const isEmoji = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(firstChar);
+                
+                let icon = '📦';
+                let name = text;
+                if (isEmoji) {
+                    icon = text.split(' ')[0];
+                    name = text.split(' ').slice(1).join(' ') || text;
+                }
+                
+                const subKey = name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+                const data = loadProducts();
+                
+                if (data.categories[state.categoryKey]) {
+                    if (!data.categories[state.categoryKey].subcategories) {
+                        data.categories[state.categoryKey].subcategories = {};
+                    }
+                    data.categories[state.categoryKey].subcategories[subKey] = {
+                        name: text,
+                        icon: icon
+                    };
+                    saveProducts(data);
+                    bot.sendMessage(chatId, `✅ "${text}" alt kategorisi eklendi.`);
+                }
+                
+                delete adminState[chatId];
+                return showAdminCategories(chatId);
+            }
+        }
+        
+        // Kategori adı değiştirme
+        if (state.action === 'rename_category') {
+            const data = loadProducts();
+            if (data.categories[state.categoryKey]) {
+                data.categories[state.categoryKey].name = text;
+                saveProducts(data);
+                bot.sendMessage(chatId, `✅ Kategori adı "${text}" olarak güncellendi.`);
+            }
+            delete adminState[chatId];
+            return showAdminCategories(chatId);
+        }
+        
+        // Kategori ikonu değiştirme
+        if (state.action === 'change_cat_icon') {
+            const data = loadProducts();
+            if (data.categories[state.categoryKey]) {
+                data.categories[state.categoryKey].icon = text.trim();
+                saveProducts(data);
+                bot.sendMessage(chatId, `✅ Kategori ikonu güncellendi.`);
+            }
+            delete adminState[chatId];
+            return showAdminCategories(chatId);
+        }
+        
+        // ========== ÜRÜN İŞLEMLERİ ==========
+        
+        // Ürün ikonu değiştirme
+        if (state.action === 'change_icon') {
+            const data = loadProducts();
+            if (data.products[state.productKey]) {
+                data.products[state.productKey].icon = text.trim();
+                saveProducts(data);
+                bot.sendMessage(chatId, `✅ Ürün ikonu güncellendi.`);
+            }
+            delete adminState[chatId];
+            return showAdminProductEdit(chatId, state.productKey);
+        }
+        
+        // Yeni ürün ekleme wizard
         if (state.action === 'add_product') {
-            if (state.step === 2) {
-                // Ürün adı
-                state.productName = text;
-                state.step = 3;
-                return bot.sendMessage(chatId, "Ürün açıklamasını girin:");
+            if (state.step === 'name') {
+                state.productName = text.trim();
+                state.step = 'category';
+                
+                // Kategori seçimi göster
+                const data = loadProducts();
+                const categories = data.categories || {};
+                
+                const buttons = [];
+                for (const catKey in categories) {
+                    const cat = categories[catKey];
+                    for (const subKey in cat.subcategories || {}) {
+                        const sub = cat.subcategories[subKey];
+                        buttons.push([{
+                            text: `${cat.icon} ${cat.name} → ${sub.icon} ${sub.name}`,
+                            callback_data: `admin_newprod_cat_${catKey}_${subKey}`
+                        }]);
+                    }
+                }
+                
+                if (buttons.length === 0) {
+                    delete adminState[chatId];
+                    return bot.sendMessage(chatId, "❌ Önce kategori ve alt kategori eklemelisiniz!");
+                }
+                
+                return bot.sendMessage(chatId, `📁 **${state.productName}** için kategori seçin:`, {
+                    parse_mode: 'Markdown',
+                    reply_markup: { inline_keyboard: buttons }
+                });
             }
-            if (state.step === 3) {
-                // Açıklama
-                state.description = text;
-                state.step = 4;
-                return bot.sendMessage(chatId, "Ürün ikonunu girin (emoji):\n\nÖrnek: 🎯");
+            
+            if (state.step === 'description') {
+                state.description = text.trim();
+                state.step = 'icon';
+                return bot.sendMessage(chatId, "🎨 Ürün ikonunu yazın (emoji):\n\nÖrnek: 🎯 veya ⭐ veya 🔥", { parse_mode: 'Markdown' });
             }
-            if (state.step === 4) {
-                // İkon
-                state.icon = text;
-                state.step = 5;
-                return bot.sendMessage(chatId, "Fiyatları girin:\n\n`7:400 30:725 60:1200`", { parse_mode: 'Markdown' });
+            
+            if (state.step === 'icon') {
+                state.icon = text.trim() || '📦';
+                state.step = 'prices';
+                return bot.sendMessage(chatId, "💰 Fiyatları şu formatta yazın:\n\n`7:400 30:725 60:1200`\n\n(7 gün: 400₺, 30 gün: 725₺, 60 gün: 1200₺)", { parse_mode: 'Markdown' });
             }
-            if (state.step === 5) {
-                // Fiyatlar
+            
+            if (state.step === 'prices') {
                 const prices = {};
-                text.split(/\s+/).forEach(p => {
+                const parts = text.split(/\s+/);
+                parts.forEach(p => {
                     const [d, price] = p.split(':');
                     if (d && price) prices[d] = parseInt(price);
                 });
                 
-                const productKey = state.productName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                if (Object.keys(prices).length === 0) {
+                    return bot.sendMessage(chatId, "❌ Geçersiz fiyat formatı! Tekrar deneyin:\n\n`7:400 30:725 60:1200`", { parse_mode: 'Markdown' });
+                }
+                
+                // Ürünü kaydet
+                const productKey = state.productName.toLowerCase().replace(/[^a-z0-9]/g, '_');
                 const data = loadProducts();
                 
                 data.products[productKey] = {
@@ -1215,12 +1676,24 @@ Satın aldığınız anahtar ile @BestOfModFiles_bot botuna gidip anahtarınız�
                     icon: state.icon
                 };
                 
+                // Stok dizilerini oluştur
+                for (const days in prices) {
+                    data.products[productKey].stock[days] = [];
+                }
+                
                 saveProducts(data);
-                bot.sendMessage(chatId, `✅ **${state.productName}** başarıyla eklendi!`, { parse_mode: 'Markdown' });
+                
+                // Açıklama dosyasını da oluştur
+                const descPath = path.join(__dirname, 'descriptions', `${state.productName}.txt`);
+                fs.writeFileSync(descPath, state.description, 'utf-8');
+                
+                bot.sendMessage(chatId, `✅ **${state.productName}** ürünü başarıyla eklendi!`, { parse_mode: 'Markdown' });
                 delete adminState[chatId];
                 return showAdminProductList(chatId);
             }
         }
+        
+        // Ürün ekleme wizard (eski format - uyumluluk için) - artık kullanılmıyor, yeni wizard yukarıda
     }
     
     // Kullanıcı dekont gönderimi
