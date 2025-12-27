@@ -47,6 +47,60 @@ function saveIcons(icons) {
 
 let ICONS = loadIcons();
 
+// Keys management: stores active keys with expiry dates
+// Format: { oderId: { oderId, chatId, product, key, expiresAt (timestamp), notified (bool) } }
+function loadKeys() {
+    try {
+        const p = path.join(__dirname, 'keys.json');
+        if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf-8'));
+    } catch (e) {}
+    return {};
+}
+
+function saveKeys(keys) {
+    try {
+        fs.writeFileSync(path.join(__dirname, 'keys.json'), JSON.stringify(keys, null, 2), 'utf-8');
+    } catch (e) {}
+}
+
+let activeKeys = loadKeys();
+
+// Check expiring keys daily and send reminders
+function checkExpiringKeys() {
+    const now = Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    let changed = false;
+
+    for (const orderId in activeKeys) {
+        const entry = activeKeys[orderId];
+        const timeLeft = entry.expiresAt - now;
+
+        // If expires in less than 24 hours and not yet notified
+        if (timeLeft > 0 && timeLeft <= oneDayMs && !entry.notified) {
+            bot.sendMessage(
+                entry.chatId,
+                `⚠️ **Hatırlatma**\n\nSatın aldığınız *${entry.product}* anahtarı yarın sona erecektir.\n\n🔑 Anahtar: \`${entry.key}\`\n\nYenilemek isterseniz bottan tekrar satın alım yapabilirsiniz.`,
+                { parse_mode: 'Markdown' }
+            ).catch(() => {});
+            entry.notified = true;
+            changed = true;
+        }
+
+        // Clean up expired keys (7 days after expiry)
+        if (timeLeft < -7 * oneDayMs) {
+            delete activeKeys[orderId];
+            changed = true;
+        }
+    }
+
+    if (changed) saveKeys(activeKeys);
+}
+
+// Run expiry check every hour
+setInterval(checkExpiringKeys, 60 * 60 * 1000);
+// Also run once on startup
+setTimeout(checkExpiringKeys, 5000);
+
 // Short callback ref map to avoid long/invalid callback_data values.
 // Stores small keys (ref_<id>) -> payload object. Used only for admin/internal flows.
 const callbackMap = {};
@@ -400,34 +454,12 @@ Açıklama: \`Tron TRC20 USDT Adresidir. Farklı ağ veya Crypto ile ödeme yap�
         const sel = users[userId];
         if (!sel) return;
 
-        const stock = products[sel.category][sel.product].stock || [];
-        const key = stock.shift();
-        if (!key)
-            return bot.sendMessage(userId, "**Üzgünüz, ürün stokta yok.**", {
-                parse_mode: "Markdown",
-            });
-
-        products[sel.category][sel.product].stock = stock;
-        fs.writeFileSync("./products.json", JSON.stringify(products, null, 2));
-
-        bot.sendMessage(
-            userId,
-            `✅ **Ödemeniz onaylandı.**
-
-🔑 **Ürün Anahtarınız:**
-\`${key}\`
-
-Satın Aldığınız Anahtar İle Aşagıdan @BestOfShopFiles_Bot'a Gidip Aldıgınız Ürünü Seçerek Kurulum Dosyalarını İndirebilirsiniz.
-
-📥 Kurulum Dosyaları İçin: ${GROUP_LINK}`,
-            {
-                parse_mode: "HTML",
-            },
-        );
-
-        bot.sendMessage(
-            ADMIN_ID,
-            `✅ Sipariş teslim edildi. Kullanıcı: ${userId} | Ürün: ${sel.product} | Kod: ${key}`,
+        // Instead of auto-sending key, ask admin to enter key + duration
+        adminState[chatId] = { action: 'send_key', targetUserId: userId, product: sel.product, category: sel.category };
+        return bot.sendMessage(
+            chatId,
+            `✅ Onay veriliyor: *${sel.product}*\n\nLütfen anahtarı ve süresini (gün) şu formatta girin:\n\n\`anahtar süre\`\n\nÖrnek: \`THE_BEST_KEY123 30\`\n\n(30 = 30 gün geçerli)`,
+            { parse_mode: 'Markdown' }
         );
     }
 });
@@ -440,6 +472,55 @@ bot.on("message", (msg) => {
     if (adminState[chatId]) {
         const state = adminState[chatId];
         const products = loadProducts();
+
+        // Admin sending key to user
+        if (state.action === 'send_key') {
+            const text = (msg.text || '').trim();
+            const parts = text.split(/\s+/);
+            if (parts.length < 2) {
+                return bot.sendMessage(chatId, 'Geçersiz format. Lütfen şu şekilde girin: `anahtar süre`\nÖrnek: `THE_BEST_KEY123 30`', { parse_mode: 'Markdown' });
+            }
+            const key = parts.slice(0, -1).join(' '); // Allow spaces in key if needed
+            const days = parseInt(parts[parts.length - 1], 10);
+            if (isNaN(days) || days <= 0) {
+                return bot.sendMessage(chatId, 'Geçersiz süre. Lütfen gün sayısını rakam olarak girin.');
+            }
+
+            const userId = state.targetUserId;
+            const product = state.product;
+            const expiresAt = Date.now() + days * 24 * 60 * 60 * 1000;
+            const orderId = `${userId}_${Date.now()}`;
+
+            // Save key info
+            activeKeys[orderId] = {
+                oderId: orderId,
+                chatId: parseInt(userId, 10),
+                product: product,
+                key: key,
+                expiresAt: expiresAt,
+                notified: false
+            };
+            saveKeys(activeKeys);
+
+            // Send key to user
+            const expiryDate = new Date(expiresAt).toLocaleDateString('tr-TR');
+            bot.sendMessage(
+                userId,
+                `✅ **Ödemeniz onaylandı!**\n\n🔑 **Ürün Anahtarınız:**\n\`${key}\`\n\n📅 **Geçerlilik:** ${days} gün (${expiryDate} tarihine kadar)\n\nSatın Aldığınız Anahtar İle Aşağıdan @BestOfShopFiles_Bot'a Gidip Aldığınız Ürünü Seçerek Kurulum Dosyalarını İndirebilirsiniz.\n\n📥 Kurulum Dosyaları İçin: ${GROUP_LINK}`,
+                { parse_mode: 'Markdown' }
+            );
+
+            // Confirm to admin
+            bot.sendMessage(
+                chatId,
+                `✅ Anahtar gönderildi!\n\n👤 Kullanıcı: ${userId}\n📦 Ürün: ${product}\n🔑 Anahtar: \`${key}\`\n📅 Süre: ${days} gün`,
+                { parse_mode: 'Markdown' }
+            );
+
+            delete adminState[chatId];
+            delete users[userId];
+            return;
+        }
 
         if (state.action === 'edit_price') {
             const text = msg.text && msg.text.trim();
