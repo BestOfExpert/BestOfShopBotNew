@@ -100,6 +100,10 @@ let activeKeys = loadKeys();
 const userState = {};
 const adminState = {};
 
+// Bekleyen siparişler (dekont gönderilmiş, onay bekleyen)
+// { oderId: { chatId, productName, days, price, timestamp } }
+const pendingOrders = {};
+
 // Callback map for long data
 const callbackMap = {};
 function makeRef(obj) {
@@ -571,12 +575,7 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
 ━━━━━━━━━━━━━━━━━━━━`;
         
         return bot.sendMessage(chatId, message, {
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: "🔙 Ana Menü", callback_data: "back_main" }]
-                ]
-            }
+            parse_mode: 'HTML'
         });
     }
     
@@ -681,13 +680,13 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
     
     // Admin - sipariş onay/red
     if (data.startsWith("approve_")) {
-        const userId = data.split("_")[1];
-        return handleApproval(chatId, userId);
+        const orderId = data.substring(8);
+        return handleApproval(chatId, orderId);
     }
     
     if (data.startsWith("reject_")) {
-        const userId = data.split("_")[1];
-        return handleRejection(chatId, userId);
+        const orderId = data.substring(7);
+        return handleRejection(chatId, orderId);
     }
 });
 
@@ -944,21 +943,22 @@ function deleteDuration(chatId, days, messageId) {
     showAdminDurations(chatId);
 }
 
-function handleApproval(chatId, userId) {
-    // userId string olarak geliyor, integer'a çevir
-    const userIdInt = parseInt(userId);
-    const sel = userState[userIdInt];
-    if (!sel) {
-        console.log(`userState bulunamadı: ${userId}, mevcut keys:`, Object.keys(userState));
-        return bot.sendMessage(chatId, "Kullanıcı bilgisi bulunamadı. Müşteri tekrar sipariş vermeli.");
+function handleApproval(chatId, orderId) {
+    // pendingOrders'dan sipariş bilgisini al
+    const order = pendingOrders[orderId];
+    if (!order) {
+        console.log(`pendingOrders bulunamadı: ${orderId}`);
+        return bot.sendMessage(chatId, "Sipariş bilgisi bulunamadı. Sipariş zaten işlenmiş olabilir.");
     }
     
-    adminState[chatId] = { action: 'send_key', targetUserId: userIdInt, ...sel };
+    const userId = order.chatId;
+    
+    adminState[chatId] = { action: 'send_key', orderId: orderId, targetUserId: userId, ...order };
     bot.sendMessage(chatId, `✅ **Sipariş Onayı**
 
-📦 Ürün: ${sel.productName}
-⏱ Süre: ${sel.days} gün
-💰 Fiyat: ${sel.price}₺
+📦 Ürün: ${order.productName}
+⏱ Süre: ${order.days} gün
+💰 Fiyat: ${order.price}₺
 
 📝 **Format:** \`anahtar süre\`
 📌 **Örnek:** \`the_best1 30\`
@@ -966,12 +966,16 @@ function handleApproval(chatId, userId) {
 Lütfen anahtarı ve süreyi yazın:`, { parse_mode: 'Markdown' });
 }
 
-function handleRejection(chatId, userId) {
-    const userIdInt = parseInt(userId);
-    const sel = userState[userIdInt];
-    const productName = sel?.productName || 'Bilinmeyen';
+function handleRejection(chatId, orderId) {
+    const order = pendingOrders[orderId];
+    if (!order) {
+        return bot.sendMessage(chatId, "Sipariş bilgisi bulunamadı.");
+    }
     
-    bot.sendMessage(userIdInt, `❌ **Ödemeniz Reddedildi**
+    const userId = order.chatId;
+    const productName = order.productName || 'Bilinmeyen';
+    
+    bot.sendMessage(userId, `❌ **Ödemeniz Reddedildi**
 
 📦 Ürün: **${productName}**
 
@@ -979,8 +983,10 @@ Dekontunuz geçersiz veya hatalı bulundu.
 
 📌 Lütfen doğru dekontu gönderin veya destek için iletişime geçin.`, { parse_mode: 'Markdown' });
     
-    bot.sendMessage(chatId, `❌ **Sipariş Reddedildi**\n\n👤 Kullanıcı: \`${userIdInt}\`\n📦 Ürün: **${productName}**\n\n⚠️ Müşteriye bildirim gönderildi.`, { parse_mode: 'Markdown' });
-    delete userState[userIdInt];
+    bot.sendMessage(chatId, `❌ **Sipariş Reddedildi**\n\n👤 Kullanıcı: \`${userId}\`\n📦 Ürün: **${productName}**\n\n⚠️ Müşteriye bildirim gönderildi.`, { parse_mode: 'Markdown' });
+    
+    // Siparişi sil
+    delete pendingOrders[orderId];
 }
 
 // ============== MESSAGE HANDLER ==============
@@ -1074,8 +1080,12 @@ Satın aldığınız anahtar ile @BestOfModFiles_bot botuna gidip anahtarınız�
 
 ✨ Müşteriye bildirim gönderildi.`, { parse_mode: 'HTML' });
             
+            // Siparişi pendingOrders'dan sil
+            if (state.orderId) {
+                delete pendingOrders[state.orderId];
+            }
+            
             delete adminState[chatId];
-            delete userState[userId];
             return;
         }
         
@@ -1212,6 +1222,16 @@ Satın aldığınız anahtar ile @BestOfModFiles_bot botuna gidip anahtarınız�
     // Kullanıcının aktif siparişi varsa (ürün seçili ise) dekont admin'e iletilsin
     // İster butona tıklasın ister direkt göndersin
     if ((msg.document || msg.photo) && sel && sel.productName) {
+        // Sipariş bilgilerini pendingOrders'a kaydet (kullanıcı Ana Menü'ye dönse bile kaybolmasın)
+        const orderId = `order_${chatId}_${Date.now()}`;
+        pendingOrders[orderId] = {
+            chatId: chatId,
+            productName: sel.productName,
+            days: sel.days,
+            price: sel.price,
+            timestamp: Date.now()
+        };
+        
         bot.forwardMessage(ADMIN_ID, chatId, msg.message_id).then((fwd) => {
             bot.sendMessage(ADMIN_ID, `🛒 <b>Yeni Sipariş Bildirimi</b>
 
@@ -1226,8 +1246,8 @@ Satın aldığınız anahtar ile @BestOfModFiles_bot botuna gidip anahtarınız�
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: "✅ Onayla", callback_data: `approve_${chatId}` },
-                            { text: "❌ Reddet", callback_data: `reject_${chatId}` }
+                            { text: "✅ Onayla", callback_data: `approve_${orderId}` },
+                            { text: "❌ Reddet", callback_data: `reject_${orderId}` }
                         ]
                     ]
                 }
@@ -1240,12 +1260,7 @@ Satın aldığınız anahtar ile @BestOfModFiles_bot botuna gidip anahtarınız�
 
 ⏳ Yoğunluğa göre süre uzayabilir.
 🙏 Lütfen bekleyiniz. Teşekkür ederiz.`, { 
-            parse_mode: "HTML",
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: "🏠 Ana Menüye Dön", callback_data: "back_main" }]
-                ]
-            }
+            parse_mode: "HTML"
         });
     }
 });
