@@ -888,10 +888,15 @@ function deleteDuration(chatId, days, messageId) {
 }
 
 function handleApproval(chatId, userId) {
-    const sel = userState[userId];
-    if (!sel) return bot.sendMessage(chatId, "Kullanıcı bilgisi bulunamadı.");
+    // userId string olarak geliyor, integer'a çevir
+    const userIdInt = parseInt(userId);
+    const sel = userState[userIdInt];
+    if (!sel) {
+        console.log(`userState bulunamadı: ${userId}, mevcut keys:`, Object.keys(userState));
+        return bot.sendMessage(chatId, "Kullanıcı bilgisi bulunamadı. Müşteri tekrar sipariş vermeli.");
+    }
     
-    adminState[chatId] = { action: 'send_key', targetUserId: userId, ...sel };
+    adminState[chatId] = { action: 'send_key', targetUserId: userIdInt, ...sel };
     bot.sendMessage(chatId, `✅ **Sipariş Onayı**
 
 📦 Ürün: ${sel.productName}
@@ -905,10 +910,11 @@ Lütfen anahtarı ve süreyi yazın:`, { parse_mode: 'Markdown' });
 }
 
 function handleRejection(chatId, userId) {
-    const sel = userState[userId];
+    const userIdInt = parseInt(userId);
+    const sel = userState[userIdInt];
     const productName = sel?.productName || 'Bilinmeyen';
     
-    bot.sendMessage(userId, `❌ **Ödemeniz Reddedildi**
+    bot.sendMessage(userIdInt, `❌ **Ödemeniz Reddedildi**
 
 📦 Ürün: **${productName}**
 
@@ -916,18 +922,19 @@ Dekontunuz geçersiz veya hatalı bulundu.
 
 📌 Lütfen doğru dekontu gönderin veya destek için iletişime geçin.`, { parse_mode: 'Markdown' });
     
-    bot.sendMessage(chatId, `❌ **Sipariş Reddedildi**\n\n👤 Kullanıcı: \`${userId}\`\n📦 Ürün: **${productName}**\n\n⚠️ Müşteriye bildirim gönderildi.`, { parse_mode: 'Markdown' });
-    delete userState[userId];
+    bot.sendMessage(chatId, `❌ **Sipariş Reddedildi**\n\n👤 Kullanıcı: \`${userIdInt}\`\n📦 Ürün: **${productName}**\n\n⚠️ Müşteriye bildirim gönderildi.`, { parse_mode: 'Markdown' });
+    delete userState[userIdInt];
 }
 
 // ============== MESSAGE HANDLER ==============
 bot.on("message", (msg) => {
     const chatId = msg.chat.id;
+    const text = (msg.text || '').trim();
     
-    // Admin state işlemleri
-    if (adminState[chatId]) {
+    // Admin state işlemleri - EN ÖNCE KONTROL ET
+    if (adminState[chatId] && text && !text.startsWith('/')) {
         const state = adminState[chatId];
-        const text = (msg.text || '').trim();
+        console.log(`Admin state aktif: ${state.action}, text: ${text}`);
         
         // Anahtar gönderimi - format: anahtar süre (örn: the_best1 30)
         if (state.action === 'send_key') {
