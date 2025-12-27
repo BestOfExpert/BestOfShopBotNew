@@ -465,7 +465,8 @@ Yapmak istediğiniz işlemi seçin:`;
                 [{ text: "➕ Yeni Ürün Ekle", callback_data: "admin_add_product" }],
                 [{ text: "⏱ Süre Seçenekleri", callback_data: "admin_durations" }],
                 [{ text: "💳 Ödeme Ayarları", callback_data: "admin_payment" }],
-                [{ text: "🔑 Anahtarlar", callback_data: "admin_keys" }]
+                [{ text: "🔑 Anahtarlar", callback_data: "admin_keys" }],
+                [{ text: "📢 Duyuru Gönder", callback_data: "admin_announce" }]
             ]
         }
     };
@@ -622,6 +623,82 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
     // Anahtar yönetimi
     if (data === "admin_keys") {
         return showAdminKeys(chatId, messageId);
+    }
+    
+    // ========== DUYURU SİSTEMİ ==========
+    
+    // Duyuru menüsü
+    if (data === "admin_announce") {
+        const prodData = loadProducts();
+        const products = prodData.products || {};
+        const productKeys = Object.keys(products);
+        
+        if (productKeys.length === 0) {
+            return bot.sendMessage(chatId, "❌ Henüz ürün bulunmuyor.");
+        }
+        
+        const buttons = productKeys.map(key => [{
+            text: `${products[key].icon || '📦'} ${products[key].name}`,
+            callback_data: `announce_prod_${key}`
+        }]);
+        buttons.push([{ text: "📢 TÜM MÜŞTERİLERE", callback_data: "announce_all" }]);
+        buttons.push([{ text: "🔙 Geri", callback_data: "admin_back" }]);
+        
+        return bot.sendMessage(chatId, "📢 <b>Duyuru Gönder</b>\n\nHangi ürünün müşterilerine duyuru göndermek istiyorsunuz?", {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: buttons }
+        });
+    }
+    
+    // Ürün seçildi - duyuru mesajı iste
+    if (data.startsWith("announce_prod_")) {
+        const productKey = data.substring(14);
+        const prodData = loadProducts();
+        const product = prodData.products[productKey];
+        
+        if (!product) {
+            return bot.sendMessage(chatId, "❌ Ürün bulunamadı.");
+        }
+        
+        // Bu ürünü alan kullanıcı sayısını hesapla
+        let userCount = 0;
+        for (const orderId in activeKeys) {
+            const entry = activeKeys[orderId];
+            if (entry.products && entry.products.includes(product.name)) {
+                userCount++;
+            }
+        }
+        
+        adminState[chatId] = { 
+            action: 'send_announce', 
+            productKey: productKey,
+            productName: product.name,
+            targetType: 'product'
+        };
+        
+        return bot.sendMessage(chatId, `📢 <b>Duyuru Gönder</b>\n\n📦 Ürün: <b>${product.name}</b>\n👥 Hedef: <b>${userCount}</b> müşteri\n\n✏️ Duyuru mesajınızı yazın:`, {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [[{ text: "🔙 İptal", callback_data: "admin_announce" }]]
+            }
+        });
+    }
+    
+    // Tüm müşterilere duyuru
+    if (data === "announce_all") {
+        const userCount = Object.keys(activeKeys).length;
+        
+        adminState[chatId] = { 
+            action: 'send_announce', 
+            targetType: 'all'
+        };
+        
+        return bot.sendMessage(chatId, `📢 <b>Genel Duyuru</b>\n\n👥 Hedef: <b>${userCount}</b> müşteri (tümü)\n\n✏️ Duyuru mesajınızı yazın:`, {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [[{ text: "🔙 İptal", callback_data: "admin_announce" }]]
+            }
+        });
     }
     
     // Anahtar listele
@@ -1585,6 +1662,69 @@ Satın aldığınız anahtar ile @BestOfModFiles_bot botuna gidip anahtarınız�
             bot.sendMessage(chatId, `✅ ${state.field} güncellendi.`);
             delete adminState[chatId];
             return showAdminPayment(chatId);
+        }
+        
+        // ========== DUYURU GÖNDERME ==========
+        
+        if (state.action === 'send_announce') {
+            const message = text.trim();
+            if (!message) {
+                return bot.sendMessage(chatId, "❌ Mesaj boş olamaz!");
+            }
+            
+            let sentCount = 0;
+            let failCount = 0;
+            const targetUsers = [];
+            
+            // Hedef kullanıcıları belirle
+            if (state.targetType === 'all') {
+                // Tüm aktif kullanıcılar
+                for (const orderId in activeKeys) {
+                    const entry = activeKeys[orderId];
+                    if (entry.chatId && !targetUsers.includes(entry.chatId)) {
+                        targetUsers.push(entry.chatId);
+                    }
+                }
+            } else if (state.targetType === 'product') {
+                // Belirli ürünü alan kullanıcılar
+                for (const orderId in activeKeys) {
+                    const entry = activeKeys[orderId];
+                    if (entry.products && entry.products.includes(state.productName)) {
+                        if (entry.chatId && !targetUsers.includes(entry.chatId)) {
+                            targetUsers.push(entry.chatId);
+                        }
+                    }
+                }
+            }
+            
+            // Duyuru mesajını oluştur
+            const announceText = `
+📢 <b>ADMİN DUYURU</b>
+━━━━━━━━━━━━━━━━━━━━━
+
+${state.productName ? `📦 <b>Ürün:</b> ${state.productName}\n\n` : ''}${message}
+
+━━━━━━━━━━━━━━━━━━━━━
+🏪 <i>Best Of Shop Bot</i>`;
+            
+            // Mesajları gönder (async wrapper)
+            (async () => {
+                for (const targetChatId of targetUsers) {
+                    try {
+                        await bot.sendMessage(targetChatId, announceText, { parse_mode: 'HTML' });
+                        sentCount++;
+                    } catch (e) {
+                        failCount++;
+                    }
+                    // Rate limit için kısa bekleme
+                    await new Promise(r => setTimeout(r, 50));
+                }
+                
+                bot.sendMessage(chatId, `✅ <b>Duyuru Gönderildi!</b>\n\n📤 Başarılı: ${sentCount}\n❌ Başarısız: ${failCount}`, { parse_mode: 'HTML' });
+            })();
+            
+            delete adminState[chatId];
+            return showAdminPanel(chatId);
         }
         
         // ========== ANAHTAR İŞLEMLERİ ==========
