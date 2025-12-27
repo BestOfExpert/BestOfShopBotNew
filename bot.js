@@ -968,18 +968,44 @@ if (filesBot) {
         return false;
     }
 
-    // Belirli ürünü satın almış kullanıcıları getir (products array destekli)
-    function getUsersForProduct(productName) {
+    // Files menüsüne karşılık gelen Shop ürünlerini bul (ters eşleştirme)
+    function getShopProductsForFilesMenu(filesMenuName) {
+        const shopProducts = [];
+        for (const shopProd in productMapping) {
+            if (productMapping[shopProd].includes(filesMenuName)) {
+                shopProducts.push(shopProd);
+            }
+        }
+        return shopProducts;
+    }
+
+    // Belirli Files menüsüne erişebilen kullanıcıları getir
+    // Hem doğrudan ürün adıyla hem de eşleştirme üzerinden arar
+    function getUsersForProduct(filesMenuName) {
         const users = [];
+        const addedChatIds = new Set(); // Aynı kullanıcıyı iki kez eklememek için
+        
+        // 1. Ters eşleştirme ile Shop ürünlerini bul
+        const shopProducts = getShopProductsForFilesMenu(filesMenuName);
+        
+        // 2. Bu Shop ürünlerini almış kullanıcıları bul
         for (const orderId in activeKeys) {
             const entry = activeKeys[orderId];
-            const products = entry.products || (entry.product ? [entry.product] : []);
-            if (products.includes(productName) && entry.expiresAt > Date.now()) {
+            if (entry.expiresAt <= Date.now()) continue; // Süresi dolmuş
+            
+            const userProducts = entry.products || (entry.product ? [entry.product] : []);
+            
+            // Shop ürünlerinden herhangi birini almış mı?
+            const hasAccess = shopProducts.some(sp => userProducts.includes(sp)) || 
+                              userProducts.includes(filesMenuName); // Geriye uyumluluk için direkt isim kontrolü
+            
+            if (hasAccess && !addedChatIds.has(entry.chatId)) {
                 users.push({
                     chatId: entry.chatId,
                     key: entry.key,
                     expiresAt: entry.expiresAt
                 });
+                addedChatIds.add(entry.chatId);
             }
         }
         return users;
