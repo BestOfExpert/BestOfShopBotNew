@@ -841,7 +841,7 @@ bot.on("message", (msg) => {
 // ============================================================
 
 if (filesBot) {
-    const FILES_DELETE_DELAY_MS = 8 * 60 * 1000; // 8 dakika sonra sil
+    const FILES_DELETE_DELAY_MS = 30 * 60 * 1000; // 30 dakika sonra sil
     const filesUserSessions = new Map();
     const filesProductUploads = new Map();
     const FILES_PRODUCTS_FILE = path.join(__dirname, 'files_products.json');
