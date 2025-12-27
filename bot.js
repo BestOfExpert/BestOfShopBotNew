@@ -887,6 +887,49 @@ if (filesBot) {
         return null;
     }
 
+    // Belirli ürünü satın almış kullanıcıları getir
+    function getUsersForProduct(productName) {
+        const users = [];
+        for (const orderId in activeKeys) {
+            const entry = activeKeys[orderId];
+            if (entry.product === productName && entry.expiresAt > Date.now()) {
+                users.push({
+                    chatId: entry.chatId,
+                    key: entry.key,
+                    expiresAt: entry.expiresAt
+                });
+            }
+        }
+        return users;
+    }
+
+    // Ürün güncellendiğinde müşterilere bildirim gönder
+    async function notifyProductUpdate(productName) {
+        const usersToNotify = getUsersForProduct(productName);
+        if (usersToNotify.length === 0) return 0;
+
+        let sentCount = 0;
+        for (const user of usersToNotify) {
+            try {
+                const daysLeft = Math.ceil((user.expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+                const message = `🔔 **Ürün Güncelleme Bildirimi**
+
+` +
+                    `📦 **${productName}** ürünü güncellendi!\n\n` +
+                    `✨ Yeni dosyalar ve içerikler eklendi.\n\n` +
+                    `🔑 Anahtarınızı girerek güncel dosyalara ulaşabilirsiniz.\n` +
+                    `📅 Kalan süreniz: **${daysLeft} gün**\n\n` +
+                    `👇 Hemen erişmek için /start yazın.`;
+                
+                await filesBot.sendMessage(user.chatId, message, { parse_mode: 'Markdown' });
+                sentCount++;
+            } catch (e) {
+                console.log(`Bildirim gönderilemedi: ${user.chatId}`);
+            }
+        }
+        return sentCount;
+    }
+
     // Menü oluştur - Shop bot'un products.json'undan al
     function getFilesDynamicMenu() {
         const shopProducts = loadProducts();
@@ -1039,6 +1082,7 @@ if (filesBot) {
             
             const oldFileCount = product.files?.length || 0;
             const hadDesc = product.description ? true : false;
+            const affectedUsers = getUsersForProduct(productName).length;
             
             // Eski dosyaları ve açıklamayı sil
             product.description = '';
@@ -1049,9 +1093,11 @@ if (filesBot) {
             filesAdminState[chatId] = { action: 'add_file', currentProduct: productName, isUpdate: true };
             
             let msg = `🔄 **${productName}** güncelleniyor\n\n`;
-            msg += `🗑 Silinen: ${oldFileCount} dosya${hadDesc ? ' + açıklama' : ''}\n\n`;
+            msg += `🗑 Silinen: ${oldFileCount} dosya${hadDesc ? ' + açıklama' : ''}\n`;
+            msg += `👥 Bu ürünü alan müşteri: **${affectedUsers} kişi**\n\n`;
             msg += `📁 Şimdi yeni dosyaları gönderin.\n`;
             msg += `📄 Açıklama eklemek için önce dosyaları bitirin ("tamam" yazın).\n\n`;
+            msg += `⚠️ Güncelleme tamamlandığında müşterilere otomatik bildirim gidecek.\n\n`;
             msg += `Dosya göndermeye başlayın:`;
             
             return filesBot.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
@@ -1065,6 +1111,31 @@ if (filesBot) {
             saveFilesProducts();
             delete filesAdminState[chatId];
             return filesBot.sendMessage(chatId, `✅ **${productName}** silindi.`, { parse_mode: 'Markdown' });
+        }
+
+        // Müşterilere bildirim gönder
+        if (data === 'files_send_notification') {
+            const productName = filesAdminState[chatId]?.currentProduct;
+            if (!productName) return filesBot.sendMessage(chatId, '❌ Önce bir ürün seçin.');
+            
+            filesBot.sendMessage(chatId, '📤 Bildirimler gönderiliyor...').then(async (loadingMsg) => {
+                const sentCount = await notifyProductUpdate(productName);
+                
+                await filesBot.deleteMessage(chatId, loadingMsg.message_id).catch(() => {});
+                
+                delete filesAdminState[chatId];
+                
+                const productCount = filesProductUploads.size;
+                return filesBot.sendMessage(chatId, `✅ **Güncelleme Tamamlandı!**\n\n📦 Ürün: **${productName}**\n📢 Bildirim gönderilen: **${sentCount} müşteri**\n\n✨ Müşteriler artık güncel dosyalara erişebilir.`, {
+                    parse_mode: 'Markdown',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: '🔙 Admin Paneline Dön', callback_data: 'files_back' }],
+                        ],
+                    },
+                });
+            });
+            return;
         }
 
         // Anahtarları yönet - Shop bot'a yönlendir
@@ -1106,19 +1177,52 @@ if (filesBot) {
 
         // Anahtar doğrulama
         if (session && session.step === 'awaiting_key' && text && !text.startsWith('/')) {
-            if (isValidFilesKey(text)) {
-                filesUserSessions.set(chatId, { step: 'validated', key: text });
-                const menu = getFilesDynamicMenu();
-                filesSendAndDelete('sendMessage', chatId, '✅ Anahtar doğrulandı. Ürün menüsüne erişebilirsiniz.', menu);
+            const keyInfo = getKeyInfo(text);
+            if (keyInfo) {
+                const purchasedProduct = keyInfo.product;
+                const daysLeft = Math.ceil((keyInfo.expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+                
+                filesUserSessions.set(chatId, { 
+                    step: 'validated', 
+                    key: text, 
+                    product: purchasedProduct,
+                    expiresAt: keyInfo.expiresAt
+                });
+                
+                // Sadece satın aldığı ürünün butonunu göster
+                const keyboard = [[purchasedProduct]];
+                const menu = {
+                    reply_markup: {
+                        keyboard,
+                        resize_keyboard: true,
+                        one_time_keyboard: false
+                    }
+                };
+                
+                const welcomeMsg = `✅ **Anahtar Doğrulandı!**\n\n` +
+                    `👋 Hoş geldiniz!\n\n` +
+                    `📦 **Ürününüz:** ${purchasedProduct}\n` +
+                    `📅 **Kalan Süre:** ${daysLeft} gün\n\n` +
+                    `Aşağıdaki butona tıklayarak dosyalarınıza erişebilirsiniz. 👇`;
+                
+                filesSendAndDelete('sendMessage', chatId, welcomeMsg, { ...menu, parse_mode: 'Markdown' });
             } else {
-                filesSendAndDelete('sendMessage', chatId, '❌ Geçersiz veya süresi dolmuş anahtar.');
+                filesSendAndDelete('sendMessage', chatId, '❌ Geçersiz veya süresi dolmuş anahtar.\n\nLütfen geçerli bir anahtar girin veya yeni ürün satın alın.');
             }
             return;
         }
 
-        // Ürün seçimi - Shop bot ürünleri veya Files bot ürünleri
+        // Ürün seçimi - Sadece satın aldığı ürüne erişebilir
         if (session && session.step === 'validated' && text && !text.startsWith('/')) {
-            // Önce Files bot'a özel ürünlerde ara
+            const purchasedProduct = session.product;
+            
+            // Kullanıcı sadece aldığı ürüne erişebilir
+            if (text !== purchasedProduct) {
+                filesSendAndDelete('sendMessage', chatId, `⚠️ Bu ürüne erişim yetkiniz yok.\n\n📦 Satın aldığınız ürün: **${purchasedProduct}**\n\nFarklı bir ürün için yeni anahtar satın almanız gerekiyor.`, { parse_mode: 'Markdown' });
+                return;
+            }
+            
+            // Kullanıcının aldığı ürünün dosyalarını göster
             if (filesProductUploads.has(text)) {
                 const product = filesProductUploads.get(text);
 
@@ -1323,15 +1427,16 @@ if (filesBot) {
             const fileCount = product?.files?.length || 0;
             const isUpdate = state.isUpdate;
             
-            // Güncelleme modundaysa açıklama ekleme seçeneği sun
+            // Güncelleme modundaysa açıklama ekleme seçeneği sun ve bildirim gönderme seçeneği
             if (isUpdate) {
-                filesAdminState[chatId] = { currentProduct: productName };
+                filesAdminState[chatId] = { currentProduct: productName, isUpdate: true, pendingNotification: true };
                 return filesBot.sendMessage(chatId, `✅ **${productName}** için ${fileCount} dosya eklendi.\n\nŞimdi ne yapmak istiyorsunuz?`, {
                     parse_mode: 'Markdown',
                     reply_markup: {
                         inline_keyboard: [
                             [{ text: '📄 Açıklama Ekle', callback_data: 'files_edit_desc' }],
-                            [{ text: '✅ Tamamla', callback_data: 'files_back' }],
+                            [{ text: '📢 Müşterilere Bildir ve Tamamla', callback_data: 'files_send_notification' }],
+                            [{ text: '✅ Bildirimsiz Tamamla', callback_data: 'files_back' }],
                         ],
                     },
                 });
