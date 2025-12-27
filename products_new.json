@@ -1,0 +1,381 @@
+{
+  "categories": {
+    "mobile": {
+      "name": "📱 Mobil Mod Ürünleri",
+      "icon": "📱",
+      "subcategories": {
+        "android": {
+          "name": "🤖 Android",
+          "icon": "🤖"
+        },
+        "ios": {
+          "name": "🍎 Apple/iOS",
+          "icon": "🍎"
+        }
+      }
+    },
+    "pc": {
+      "name": "💻 PC/Bilgisayar Ürünleri",
+      "icon": "💻",
+      "subcategories": {
+        "emulator": {
+          "name": "🎮 Emülatör",
+          "icon": "🎮"
+        }
+      }
+    }
+  },
+  "products": {
+    "cyrax_mod": {
+      "name": "Cyrax Mod",
+      "description": "Mobile Legends için en gelişmiş Android mod.",
+      "category": "mobile",
+      "subcategory": "android",
+      "prices": {
+        "7": 400,
+        "30": 725,
+        "60": 1200
+      },
+      "stock": {
+        "7": ["cyrax hafta1", "cyrax hafta2", "cyrax hafta3"],
+        "30": ["cyrax ay1", "cyrax ay2"],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "🎯"
+    },
+    "thebestml_full": {
+      "name": "TheBestML FULL Sürüm + İMGUİ",
+      "description": "Mobile Legends için full özellikli mod. İMGUİ arayüzü ile kolay kullanım.",
+      "category": "mobile",
+      "subcategory": "android",
+      "prices": {
+        "7": 400,
+        "30": 750,
+        "60": 1300
+      },
+      "stock": {
+        "7": ["thebesthafta1", "thebesthafta3", "thebesthafta4"],
+        "30": ["thebesthafta1", "thebesthafta3", "thebesthafta4"],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "⭐"
+    },
+    "thebestml": {
+      "name": "TheBestML",
+      "description": "Mobile Legends için temel mod.",
+      "category": "mobile",
+      "subcategory": "android",
+      "prices": {
+        "7": 250,
+        "30": 550,
+        "60": 900
+      },
+      "stock": {
+        "7": ["thebesthafta1", "thebesthafta3", "thebesthafta4"],
+        "30": ["thebestAY1", "thebestAY2"],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "🌟"
+    },
+    "flue_mod": {
+      "name": "Flue Mod",
+      "description": "iOS için Mobile Legends mod. Jailbreak gerektirmez.",
+      "category": "mobile",
+      "subcategory": "ios",
+      "prices": {
+        "7": 550,
+        "30": 850,
+        "60": 1500
+      },
+      "stock": {
+        "7": ["FLUE1"],
+        "30": ["FLUE1"],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "🔥"
+    },
+    "gbox_ipa": {
+      "name": "Gbox İpa Kurulum Mağaza",
+      "description": "iOS için Gbox mağaza kurulumu.",
+      "category": "mobile",
+      "subcategory": "ios",
+      "prices": {
+        "7": 550,
+        "30": 550,
+        "60": 550
+      },
+      "stock": {
+        "7": ["Gbox-KEY1-Admine Bu Kodu Gönder @BestOfExpert", "Gbox-KEY2-Admine Bu Kodu Gönder @BestOfExpert", "Gbox-KEY3-Admine Bu Kodu Gönder @BestOfExpert"],
+        "30": [],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "📦"
+    },
+    "ak_mod": {
+      "name": "Ak Mod (8 Ball Pool)",
+      "description": "8 Ball Pool için en iyi Android mod.",
+      "category": "mobile",
+      "subcategory": "android",
+      "prices": {
+        "7": 575,
+        "30": 1375,
+        "60": 2200
+      },
+      "stock": {
+        "7": ["AKHAFTA-KEY1-Admine Bu Kodu Gönder @BestOfExpert", "AKHAFTA-KEY2-Admine Bu Kodu Gönder @BestOfExpert"],
+        "30": ["AK-AY-KEY1-Admine Bu Kodu Gönder @BestOfExpert", "AK-AY-KEY2-Admine Bu Kodu Gönder @BestOfExpert"],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "🎱"
+    },
+    "psh4x": {
+      "name": "PSH4X (8 Ball Pool)",
+      "description": "8 Ball Pool için PSH4X mod.",
+      "category": "mobile",
+      "subcategory": "android",
+      "prices": {
+        "7": 450,
+        "30": 900,
+        "60": 1500
+      },
+      "stock": {
+        "7": [],
+        "30": ["PSH4X-KEY1-Admine Bu Kodu Gönder @BestOfExpert", "PSH4X-KEY2-Admine Bu Kodu Gönder @BestOfExpert"],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "🎯"
+    },
+    "8bp_ios": {
+      "name": "8 Ball Pool iOS Mod",
+      "description": "8 Ball Pool için iPhone/iOS mod.",
+      "category": "mobile",
+      "subcategory": "ios",
+      "prices": {
+        "7": 500,
+        "30": 900,
+        "60": 1500
+      },
+      "stock": {
+        "7": ["8BP-İOSHAFTA1-Admine Bu Kodu Gönder @BestOfExpert", "8BP-İOSHAFTA2-Admine Bu Kodu Gönder @BestOfExpert"],
+        "30": ["8BP-İOSAY1-Admine Bu Kodu Gönder @BestOfExpert", "8BP-İOSAY2-Admine Bu Kodu Gönder @BestOfExpert"],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "🍎"
+    },
+    "shield_plus": {
+      "name": "Shield Plus (PUBG Mobile)",
+      "description": "PUBG Mobile Android için rootsuz mod.",
+      "category": "mobile",
+      "subcategory": "android",
+      "prices": {
+        "7": 500,
+        "30": 875,
+        "60": 1500
+      },
+      "stock": {
+        "7": ["AndPubgHafta-KEY1", "AndPubgHafta-KEY2", "AndPubgHafta-KEY3"],
+        "30": ["AndPubgAy-KEY1", "AndPubgAy-KEY2", "AndPubgAy-KEY3"],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "🛡️"
+    },
+    "cheat_ninja": {
+      "name": "Cheat Ninja (PUBG Rootlu)",
+      "description": "PUBG Mobile rootlu cihazlar için mod.",
+      "category": "mobile",
+      "subcategory": "android",
+      "prices": {
+        "7": 600,
+        "30": 1200,
+        "60": 2000
+      },
+      "stock": {
+        "7": [],
+        "30": ["Sharp-KEY1", "Sharp-KEY2"],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "🥷"
+    },
+    "kernel_rootlu": {
+      "name": "Kernel (PUBG Rootlu)",
+      "description": "PUBG Mobile rootlu cihazlar için kernel mod.",
+      "category": "mobile",
+      "subcategory": "android",
+      "prices": {
+        "7": 625,
+        "30": 1250,
+        "60": 2100
+      },
+      "stock": {
+        "7": [],
+        "30": ["Kernel-KEY1", "Kernel-KEY2"],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "⚙️"
+    },
+    "star_ios": {
+      "name": "Star iOS (PUBG Mobile)",
+      "description": "PUBG Mobile iOS için No JB mod.",
+      "category": "mobile",
+      "subcategory": "ios",
+      "prices": {
+        "7": 450,
+        "30": 850,
+        "60": 1400
+      },
+      "stock": {
+        "7": ["StarHafta1-Admine Bu Kodu Gönder @BestOfExpert", "StarHafta2-Admine Bu Kodu Gönder @BestOfExpert"],
+        "30": ["StarAy100-Admine Bu Kodu Gönder @BestOfExpert", "StarAy101-Admine Bu Kodu Gönder @BestOfExpert"],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "⭐"
+    },
+    "king_bypass": {
+      "name": "KİNG Bypass",
+      "description": "PUBG Mobile Emülatör için bypass.",
+      "category": "pc",
+      "subcategory": "emulator",
+      "prices": {
+        "7": 600,
+        "30": 1200,
+        "60": 2000
+      },
+      "stock": {
+        "7": [],
+        "30": ["KingEmuAY1 - Admine Bu Kodu Gönder @BestOfExpert"],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "👑"
+    },
+    "wildrift_android": {
+      "name": "WildRift Android",
+      "description": "Wild Rift Android mod.",
+      "category": "mobile",
+      "subcategory": "android",
+      "prices": {
+        "7": 650,
+        "30": 1200,
+        "60": 2000
+      },
+      "stock": {
+        "7": ["Wild247DAY1e5xxoh5"],
+        "30": ["Wild2430DAYH56eSlOF"],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "🎮"
+    },
+    "wildrift_ios": {
+      "name": "WildRift iOS",
+      "description": "Wild Rift iOS mod.",
+      "category": "mobile",
+      "subcategory": "ios",
+      "prices": {
+        "7": 650,
+        "30": 1200,
+        "60": 2000
+      },
+      "stock": {
+        "7": ["Wild24-7day-hXOLI2QxBMNJmzG"],
+        "30": ["Wild24-30day-faQxSAijBlhnZyz"],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "🎮"
+    },
+    "st2_android": {
+      "name": "Standoff 2 Android/Emülatör",
+      "description": "Standoff 2 rootlu Android ve emülatör mod.",
+      "category": "mobile",
+      "subcategory": "android",
+      "prices": {
+        "7": 400,
+        "30": 750,
+        "60": 1200
+      },
+      "stock": {
+        "7": ["st2 Hafta1 - Admine Bu Kodu Gönder @BestOfExpert", "st2 Hafta2 - Admine Bu Kodu Gönder @BestOfExpert"],
+        "30": ["st2 Ay1 - Admine Bu Kodu Gönder @BestOfExpert", "st2 Ay2 - Admine Bu Kodu Gönder @BestOfExpert"],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "🔫"
+    },
+    "gbox_magaza": {
+      "name": "Gbox Mağaza",
+      "description": "iOS için Gbox mağaza.",
+      "category": "mobile",
+      "subcategory": "ios",
+      "prices": {
+        "7": 550,
+        "30": 550,
+        "60": 550
+      },
+      "stock": {
+        "7": ["GBOX1-Admine Bu Kodu Gönder @BestOfExpert", "GBOX2-Admine Bu Kodu Gönder @BestOfExpert"],
+        "30": [],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "📱"
+    },
+    "delta_force_ios": {
+      "name": "Delta Force iOS",
+      "description": "Delta Force iOS mod.",
+      "category": "mobile",
+      "subcategory": "ios",
+      "prices": {
+        "7": 600,
+        "30": 1100,
+        "60": 1800
+      },
+      "stock": {
+        "7": ["DELTAİOSHafta1-Admine Bu Kodu Gönder @BestOfExpert", "DELTAİOSHafta2-Admine Bu Kodu Gönder @BestOfExpert"],
+        "30": ["DELTAİOSAy1-Admine Bu Kodu Gönder @BestOfExpert", "DELTAİOSAy2-Admine Bu Kodu Gönder @BestOfExpert"],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "🪖"
+    },
+    "delta_force_android": {
+      "name": "Delta Force Android",
+      "description": "Delta Force Android mod.",
+      "category": "mobile",
+      "subcategory": "android",
+      "prices": {
+        "7": 550,
+        "30": 1000,
+        "60": 1700
+      },
+      "stock": {
+        "7": ["DELTAAndrHafta1-Admine Bu Kodu Gönder @BestOfExpert", "DELTAAndrHafta2-Admine Bu Kodu Gönder @BestOfExpert"],
+        "30": ["DELTAAndrAy1-Admine Bu Kodu Gönder @BestOfExpert", "DELTAAndrAy2-Admine Bu Kodu Gönder @BestOfExpert"],
+        "60": []
+      },
+      "maintenance": false,
+      "icon": "🪖"
+    }
+  },
+  "settings": {
+    "durations": [
+      {"days": 7, "label": "7 Gün"},
+      {"days": 30, "label": "30 Gün"},
+      {"days": 60, "label": "60 Gün"}
+    ],
+    "currency": "TL",
+    "currency_symbol": "₺"
+  }
+}
