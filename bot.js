@@ -536,33 +536,54 @@ bot.on("callback_query", (query) => {
 
         let message = "";
         if (data === "pay_iban") {
-            message = `**💸 IBAN ile ödeme bilgileri:**
+            message = `💸 **IBAN ile Ödeme Bilgileri**
 
-IBAN: \`${IBAN}\`
+┌─────────────────────────────┐
+│  🏦 **IBAN:**
+│  \`${IBAN}\`
+│
+│  📝 **Açıklama:**
+│  \`88295280440\`
+│
+│  👤 **Alıcı Adı:**
+│  \`Moka United Ödeme ve Elektronik\`
+│  \`Para Kuruluşu A.Ş.\`
+└─────────────────────────────┘
 
-Açıklama: \`88295280440\`
+⚠️ **ÖNEMLİ:** Açıklamaya \`88295280440\` yazmayı unutmayın! Yazmazsanız ödeme bize ulaşmaz.
 
-Alıcı Adı: \`Moka United Ödeme ve Elektronik Para Kuruluşu A.Ş.\`
+📤 **Ödeme yaptıktan sonra** dekontu PDF veya ekran görüntüsü olarak buraya gönderin.
 
-‼️ **Dikkat:** Açıklamadaki numarayı yazmassanız ödeme bize geçmez!Lütfen Açıklamaya 88295280440 yazmayı unutmayın.
-
-**Ödeme Yaptıktan Sonra Lütfen dekontu PDF veya ekran görüntüsü olarak buraya atın.Farklı Dekont Veya Ekran Görüntüsü Atan Kullanıcılar Yasaklanacaktır.**`;
+🚫 _Farklı/sahte dekont gönderenler yasaklanır._`;
         } else if (data === "pay_papara") {
-            message = `**🏦 Papara ile ödeme bilgileri:**
+            message = `🏦 **Papara ile Ödeme Bilgileri**
 
-Papara Numarası: \`${PAPARA_KODU}\`
+┌─────────────────────────────┐
+│  📱 **Papara Numarası:**
+│  \`${PAPARA_KODU}\`
+└─────────────────────────────┘
 
-Açıklama: papara ödeme yöntemi şuanda kullanımda değildir
+⚠️ Papara ödeme yöntemi şu anda kullanımda değildir.
 
-**Ödeme Yaptıktan Sonra Lütfen dekontu PDF veya ekran görüntüsü olarak buraya atın.Farklı Dekont Veya Ekran Görüntüsü Atan Kullanıcılar Yasaklanacaktır.**`;
+📤 **Ödeme yaptıktan sonra** dekontu PDF veya ekran görüntüsü olarak buraya gönderin.
+
+🚫 _Farklı/sahte dekont gönderenler yasaklanır._`;
         } else if (data === "pay_binance") {
-            message = `**💰 Binance (USDT) ile ödeme bilgileri:**
+            message = `💰 **Binance (USDT) ile Ödeme Bilgileri**
 
-USDT (TRC20) Adresi: \`${BINANCE_USDT}\`
+┌─────────────────────────────┐
+│  🔗 **USDT (TRC20) Adresi:**
+│  \`${BINANCE_USDT}\`
+└─────────────────────────────┘
 
-Açıklama: \`Tron TRC20 USDT Adresidir. Farklı ağ veya Crypto ile ödeme yapılamaz gönderdiğiniz hatalı işlemlerden kullanıcı sorumludur.Mod Fiyatını tl cinsinden USD ye çevirin Karsılıgı kaç $ ise onu göndermeniz yeterlidir.\`
+⚠️ **ÖNEMLİ:**
+• Sadece **Tron TRC20** ağı kullanın
+• Farklı ağ veya kripto ile yapılan ödemelerden kullanıcı sorumludur
+• Mod fiyatını TL → USD'ye çevirin
 
-**Ödeme Yaptıktan Sonra Lütfen dekontu PDF veya ekran görüntüsü olarak buraya atın.Farklı Dekont Veya Ekran Görüntüsü Atan Kullanıcılar Yasaklanacaktır.**`;
+📤 **Ödeme yaptıktan sonra** dekontu PDF veya ekran görüntüsü olarak buraya gönderin.
+
+🚫 _Farklı/sahte dekont gönderenler yasaklanır._`;
         }
 
         bot.sendMessage(chatId, message, { parse_mode: "Markdown" });
