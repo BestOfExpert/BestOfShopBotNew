@@ -189,6 +189,7 @@ bot.on("callback_query", (query) => {
         else if (ref.type === 'admin_delete') data = `admin_delete|${encodeURIComponent(ref.category)}|${encodeURIComponent(ref.product)}`;
         else if (ref.type === 'admin_products') data = 'admin_products';
         else if (ref.type === 'admin_set_icon') data = `admin_set_icon|${encodeURIComponent(ref.category)}`;
+        else if (ref.type === 'admin_toggle_maintenance') data = `admin_toggle_maintenance|${encodeURIComponent(ref.category)}|${encodeURIComponent(ref.product)}`;
     }
     // Admin callbacks
     if (data === 'admin_products' && chatId === ADMIN_ID) {
@@ -205,9 +206,12 @@ bot.on("callback_query", (query) => {
     if (data && data.startsWith('admin_cat_') && chatId === ADMIN_ID) {
         const category = decodeURIComponent(data.substring(10));
         const prodNames = Object.keys(products[category] || {});
-        const buttons = prodNames.map((p) => [
-            { text: `${ICONS[`prod:${category}|${p}`] || ICONS.defaultProduct} ${p}`, callback_data: makeCallbackRef({ type: 'admin_prod', category, product: p }) },
-        ]);
+        const buttons = prodNames.map((p) => {
+            const isMaintenance = products[category][p].maintenance === true;
+            const icon = isMaintenance ? '🔵' : (ICONS[`prod:${category}|${p}`] || ICONS.defaultProduct);
+            const label = isMaintenance ? `${icon} ${p} (Bakımda)` : `${icon} ${p}`;
+            return [{ text: label, callback_data: makeCallbackRef({ type: 'admin_prod', category, product: p }) }];
+        });
         // Add an extra row to edit category icon
         const keyboard = [
             ...buttons,
@@ -225,13 +229,19 @@ bot.on("callback_query", (query) => {
         const [encCat, encProd] = payload.split('|');
         const category = decodeURIComponent(encCat);
         const productName = decodeURIComponent(encProd);
+        const isMaintenance = products[category]?.[productName]?.maintenance === true;
+        const maintenanceBtn = isMaintenance 
+            ? { text: '✅ Bakımdan Çıkar', callback_data: makeCallbackRef({ type: 'admin_toggle_maintenance', category, product: productName }) }
+            : { text: '🔵 Bakıma Al', callback_data: makeCallbackRef({ type: 'admin_toggle_maintenance', category, product: productName }) };
+        const statusText = isMaintenance ? '\n🔵 *Durum: Bakımda*' : '';
         adminState[chatId] = { action: null, category, productName };
-        return bot.sendMessage(chatId, `Seçildi: *${productName}*\nNe yapmak istiyorsunuz?`, {
+        return bot.sendMessage(chatId, `Seçildi: *${productName}*${statusText}\nNe yapmak istiyorsunuz?`, {
             parse_mode: 'Markdown',
             reply_markup: {
                 inline_keyboard: [
                     [{ text: '✏️ Fiyatı Düzenle', callback_data: makeCallbackRef({ type: 'admin_edit_price', category, product: productName }) }],
                     [{ text: '📝 Açıklamayı Düzenle', callback_data: makeCallbackRef({ type: 'admin_edit_desc', category, product: productName }) }],
+                    [maintenanceBtn],
                     [{ text: '🗑 Ürünü Sil', callback_data: makeCallbackRef({ type: 'admin_delete', category, product: productName }) }],
                     [{ text: '🔖 İkonu Düzenle', callback_data: makeCallbackRef({ type: 'admin_set_icon_prod', category, product: productName }) }],
                     [{ text: '🔙 Geri', callback_data: makeCallbackRef({ type: 'admin_cat', category }) }],
@@ -263,6 +273,20 @@ bot.on("callback_query", (query) => {
         delete products[category][productName];
         saveProducts(products);
         return bot.sendMessage(chatId, `✅ *${productName}* silindi.`, { parse_mode: 'Markdown' });
+    }
+
+    // Admin: toggle maintenance mode
+    if (data && data.startsWith('admin_toggle_maintenance') && chatId === ADMIN_ID) {
+        const parts = data.split('|');
+        const category = decodeURIComponent(parts[1]);
+        const productName = decodeURIComponent(parts[2]);
+        if (products[category] && products[category][productName]) {
+            const current = products[category][productName].maintenance === true;
+            products[category][productName].maintenance = !current;
+            saveProducts(products);
+            const newStatus = !current ? 'bakıma alındı 🔵' : 'bakımdan çıkarıldı ✅';
+            return bot.sendMessage(chatId, `*${productName}* ${newStatus}`, { parse_mode: 'Markdown' });
+        }
     }
 
     if (data === 'admin_add_product' && chatId === ADMIN_ID) {
@@ -338,12 +362,15 @@ bot.on("callback_query", (query) => {
         userState[chatId] = category;
         const subProducts = Object.keys(products[category]);
 
-        const buttons = subProducts.map((name) => [
-            {
-                text: `${ICONS.defaultProduct} ${name}`,
+        const buttons = subProducts.map((name) => {
+            const isMaintenance = products[category][name]?.maintenance === true;
+            const icon = isMaintenance ? '🔵' : ICONS.defaultProduct;
+            const label = isMaintenance ? `${icon} ${name} (Bakımda)` : `${icon} ${name}`;
+            return [{
+                text: label,
                 callback_data: `product_${name}`,
-            },
-        ]);
+            }];
+        });
 
         bot.sendMessage(
             chatId,
@@ -363,6 +390,11 @@ bot.on("callback_query", (query) => {
         const category = userState[chatId];
         if (!category || !products[category][productName]) {
             return bot.sendMessage(chatId, "⚠️ Oturum zaman aşımına uğradı.\n\nBotu başlatmak için /start yazın.");
+        }
+
+        // Check if product is under maintenance
+        if (products[category][productName].maintenance === true) {
+            return bot.sendMessage(chatId, "🔵 **Bu ürün şu anda bakımdadır.**\n\nLütfen daha sonra tekrar deneyin veya başka bir ürün seçin.", { parse_mode: 'Markdown' });
         }
 
         users[chatId] = { category, product: productName };
