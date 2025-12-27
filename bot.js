@@ -1,4 +1,4 @@
-const TelegramBot = require("node-telegram-bot-api");
+﻿const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs");
 const path = require("path");
 
@@ -24,10 +24,32 @@ if (filesToken) {
 }
 
 const ADMIN_ID = 1447919062;
-const IBAN = "TR230010300000000014365322";
-const PAPARA_KODU = "papara ödeme yöntemi şuanda kullanımda değildir";
-const BINANCE_USDT = "TWdjyffvtyhbwuQzrNdh3A215EG6cNPWVL";
 const GROUP_LINK = "@BestOfShopFiles_Bot";
+
+// Ödeme ayarları - payment_settings.json'dan yükle
+const DEFAULT_PAYMENT_SETTINGS = {
+    iban: "TR230010300000000014365322",
+    iban_alici: "Moka United Ödeme ve Elektronik Para Kuruluşu A.Ş.",
+    iban_aciklama: "88295280440",
+    papara: "papara ödeme yöntemi şuanda kullanımda değildir",
+    binance: "TWdjyffvtyhbwuQzrNdh3A215EG6cNPWVL"
+};
+
+function loadPaymentSettings() {
+    try {
+        const p = path.join(__dirname, 'payment_settings.json');
+        if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf-8'));
+    } catch (e) {}
+    return Object.assign({}, DEFAULT_PAYMENT_SETTINGS);
+}
+
+function savePaymentSettings(settings) {
+    try {
+        fs.writeFileSync(path.join(__dirname, 'payment_settings.json'), JSON.stringify(settings, null, 2), 'utf-8');
+    } catch (e) {}
+}
+
+let paymentSettings = loadPaymentSettings();
 
 let users = {};
 let userState = {};
@@ -185,8 +207,9 @@ bot.onText(/\/admin/, (msg) => {
             inline_keyboard: [
                 [{ text: "🛠 Ürünleri Yönet", callback_data: "admin_products" }],
                 [{ text: "➕ Ürün Ekle", callback_data: "admin_add_product" }],
-                [{ text: "� Anahtarları Yönet", callback_data: "admin_keys" }],
-                [{ text: "�📣 Menüyü Gönder (Preview)", callback_data: "admin_preview_menu" }],
+                [{ text: "🔑 Anahtarları Yönet", callback_data: "admin_keys" }],
+                [{ text: "💳 Ödeme Ayarları", callback_data: "admin_payment" }],
+                [{ text: "📣 Menüyü Gönder (Preview)", callback_data: "admin_preview_menu" }],
             ],
         },
     });
@@ -423,6 +446,73 @@ bot.on("callback_query", (query) => {
         return bot.sendMessage(chatId, '❌ Anahtar bulunamadı.');
     }
 
+    // ============== ÖDEME AYARLARI ==============
+    if (data === 'admin_payment' && chatId === ADMIN_ID) {
+        const settings = paymentSettings;
+        const msg = `💳 **Ödeme Ayarları**
+
+┌─────────────────────────────┐
+│  🏦 **IBAN:**
+│  \`${settings.iban}\`
+│
+│  👤 **Alıcı Adı:**
+│  \`${settings.iban_alici}\`
+│
+│  📝 **Açıklama:**
+│  \`${settings.iban_aciklama}\`
+│
+│  📱 **Papara:**
+│  \`${settings.papara}\`
+│
+│  🔗 **Binance (USDT):**
+│  \`${settings.binance}\`
+└─────────────────────────────┘`;
+        
+        return bot.sendMessage(chatId, msg, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🏦 IBAN Düzenle', callback_data: 'admin_pay_edit_iban' }],
+                    [{ text: '👤 Alıcı Adı Düzenle', callback_data: 'admin_pay_edit_alici' }],
+                    [{ text: '📝 Açıklama Düzenle', callback_data: 'admin_pay_edit_aciklama' }],
+                    [{ text: '📱 Papara Düzenle', callback_data: 'admin_pay_edit_papara' }],
+                    [{ text: '🔗 Binance Düzenle', callback_data: 'admin_pay_edit_binance' }],
+                    [{ text: '🔙 Geri', callback_data: 'admin_back' }],
+                ],
+            },
+        });
+    }
+
+    // Admin: Edit IBAN
+    if (data === 'admin_pay_edit_iban' && chatId === ADMIN_ID) {
+        adminState[chatId] = { action: 'edit_payment', field: 'iban' };
+        return bot.sendMessage(chatId, `🏦 **IBAN Düzenleme**\n\nMevcut IBAN:\n\`${paymentSettings.iban}\`\n\nYeni IBAN\'ı girin:`, { parse_mode: 'Markdown' });
+    }
+
+    // Admin: Edit Alıcı Adı
+    if (data === 'admin_pay_edit_alici' && chatId === ADMIN_ID) {
+        adminState[chatId] = { action: 'edit_payment', field: 'iban_alici' };
+        return bot.sendMessage(chatId, `👤 **Alıcı Adı Düzenleme**\n\nMevcut Alıcı:\n\`${paymentSettings.iban_alici}\`\n\nYeni alıcı adını girin:`, { parse_mode: 'Markdown' });
+    }
+
+    // Admin: Edit Açıklama
+    if (data === 'admin_pay_edit_aciklama' && chatId === ADMIN_ID) {
+        adminState[chatId] = { action: 'edit_payment', field: 'iban_aciklama' };
+        return bot.sendMessage(chatId, `📝 **Açıklama Düzenleme**\n\nMevcut Açıklama:\n\`${paymentSettings.iban_aciklama}\`\n\nYeni açıklamayı girin:`, { parse_mode: 'Markdown' });
+    }
+
+    // Admin: Edit Papara
+    if (data === 'admin_pay_edit_papara' && chatId === ADMIN_ID) {
+        adminState[chatId] = { action: 'edit_payment', field: 'papara' };
+        return bot.sendMessage(chatId, `📱 **Papara Düzenleme**\n\nMevcut Papara:\n\`${paymentSettings.papara}\`\n\nYeni Papara numarasını girin:`, { parse_mode: 'Markdown' });
+    }
+
+    // Admin: Edit Binance
+    if (data === 'admin_pay_edit_binance' && chatId === ADMIN_ID) {
+        adminState[chatId] = { action: 'edit_payment', field: 'binance' };
+        return bot.sendMessage(chatId, `🔗 **Binance Düzenleme**\n\nMevcut Adres:\n\`${paymentSettings.binance}\`\n\nYeni USDT (TRC20) adresini girin:`, { parse_mode: 'Markdown' });
+    }
+
     if (data === "main_menu") {
         userState[chatId] = null;
         const categories = Object.keys(products);
@@ -540,16 +630,16 @@ bot.on("callback_query", (query) => {
 
 ┌─────────────────────────────┐
 │  🏦 **IBAN:**
-│  \`${IBAN}\`
+│  \`${paymentSettings.iban}\`
 │
 │  📝 **Açıklama:**
-│  \`88295280440\`
+│  \`${paymentSettings.iban_aciklama}\`
 │
 │  👤 **Alıcı Adı:**
-│  \`Moka United Ödeme ve Elektronik Para Kuruluşu A.Ş.\`
+│  \`${paymentSettings.iban_alici}\`
 └─────────────────────────────┘
 
-⚠️ **ÖNEMLİ:** Açıklamaya \`88295280440\` yazmayı unutmayın! Yazmazsanız ödeme bize ulaşmaz.
+⚠️ **ÖNEMLİ:** Açıklamaya \`${paymentSettings.iban_aciklama}\` yazmayı unutmayın! Yazmazsanız ödeme bize ulaşmaz.
 
 📤 **Ödeme yaptıktan sonra** dekontu PDF veya ekran görüntüsü olarak buraya gönderin.
 
@@ -559,7 +649,7 @@ bot.on("callback_query", (query) => {
 
 ┌─────────────────────────────┐
 │  📱 **Papara Numarası:**
-│  \`${PAPARA_KODU}\`
+│  \`${paymentSettings.papara}\`
 └─────────────────────────────┘
 
 ⚠️ Papara ödeme yöntemi şu anda kullanımda değildir.
@@ -572,7 +662,7 @@ bot.on("callback_query", (query) => {
 
 ┌─────────────────────────────┐
 │  🔗 **USDT (TRC20) Adresi:**
-│  \`${BINANCE_USDT}\`
+│  \`${paymentSettings.binance}\`
 └─────────────────────────────┘
 
 ⚠️ **ÖNEMLİ:**
@@ -733,6 +823,34 @@ bot.on("message", (msg) => {
                 delete adminState[chatId];
                 return bot.sendMessage(chatId, `✅ *${state.productName}* için ikon olarak ${text} ayarlandı.`, { parse_mode: 'Markdown' });
             }
+        }
+
+        // Admin: Ödeme ayarı düzenleme
+        if (state.action === 'edit_payment') {
+            const text = (msg.text || '').trim();
+            if (!text) return bot.sendMessage(chatId, '⚠️ Geçersiz değer. Lütfen tekrar deneyin.');
+            
+            const fieldNames = {
+                'iban': '🏦 IBAN',
+                'iban_alici': '👤 Alıcı Adı',
+                'iban_aciklama': '📝 Açıklama',
+                'papara': '📱 Papara',
+                'binance': '🔗 Binance'
+            };
+            
+            paymentSettings[state.field] = text;
+            savePaymentSettings(paymentSettings);
+            delete adminState[chatId];
+            
+            return bot.sendMessage(chatId, `✅ ${fieldNames[state.field]} güncellendi!\n\nYeni değer:\n\`${text}\``, { 
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '💳 Ödeme Ayarlarına Dön', callback_data: 'admin_payment' }],
+                        [{ text: '🔙 Ana Menü', callback_data: 'admin_back' }],
+                    ],
+                },
+            });
         }
 
         if (state.action === 'edit_desc') {
@@ -2078,3 +2196,4 @@ if (filesBot) {
 
     console.log('Files bot handlers registered.');
 }
+
