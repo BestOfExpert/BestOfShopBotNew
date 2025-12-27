@@ -905,8 +905,18 @@ Lütfen anahtarı ve süreyi yazın:`, { parse_mode: 'Markdown' });
 }
 
 function handleRejection(chatId, userId) {
-    bot.sendMessage(userId, `❌ **Ödemeniz reddedildi.**\n\nDekontunuz geçersiz bulundu. Lütfen doğru dekontu gönderin.`, { parse_mode: 'Markdown' });
-    bot.sendMessage(chatId, `❌ Kullanıcı ${userId} için sipariş reddedildi.`);
+    const sel = userState[userId];
+    const productName = sel?.productName || 'Bilinmeyen';
+    
+    bot.sendMessage(userId, `❌ **Ödemeniz Reddedildi**
+
+📦 Ürün: **${productName}**
+
+Dekontunuz geçersiz veya hatalı bulundu.
+
+📌 Lütfen doğru dekontu gönderin veya destek için iletişime geçin.`, { parse_mode: 'Markdown' });
+    
+    bot.sendMessage(chatId, `❌ **Sipariş Reddedildi**\n\n👤 Kullanıcı: \`${userId}\`\n📦 Ürün: **${productName}**\n\n⚠️ Müşteriye bildirim gönderildi.`, { parse_mode: 'Markdown' });
     delete userState[userId];
 }
 
@@ -944,17 +954,29 @@ bot.on("message", (msg) => {
             saveKeys(activeKeys);
             
             const expiryDate = new Date(expiresAt).toLocaleDateString('tr-TR');
-            bot.sendMessage(userId, `✅ **Ödemeniz onaylandı!**
+            bot.sendMessage(userId, `✅ **Ödemeniz Onaylandı!**
 
-🔑 **Anahtarınız:**
+🔑 **Ürün Anahtarınız:**
 \`${key}\`
 
 📦 **Ürün:** ${state.productName}
-📅 **Geçerlilik:** ${days} gün (${expiryDate})
+📅 **Geçerlilik:** ${days} gün (${expiryDate} tarihine kadar)
 
-📥 Kurulum dosyaları için: ${GROUP_LINK}`, { parse_mode: 'Markdown' });
+━━━━━━━━━━━━━━━━━━━━
+
+📥 **Kurulum Dosyaları İçin:**
+Satın aldığınız anahtar ile ${GROUP_LINK} botuna gidip anahtarınızı girerek kurulum dosyalarını indirebilirsiniz.
+
+🙏 Bizi tercih ettiğiniz için teşekkür ederiz!`, { parse_mode: 'Markdown' });
             
-            bot.sendMessage(chatId, `✅ Anahtar gönderildi!\n\n👤 Kullanıcı: ${userId}\n🔑 Anahtar: \`${key}\``, { parse_mode: 'Markdown' });
+            bot.sendMessage(chatId, `✅ **Anahtar Gönderildi!**
+
+👤 Kullanıcı: \`${userId}\`
+📦 Ürün: **${state.productName}**
+🔑 Anahtar: \`${key}\`
+📅 Süre: **${days} gün**
+
+✨ Müşteriye bildirim gönderildi.`, { parse_mode: 'Markdown' });
             delete adminState[chatId];
             delete userState[userId];
             return;
@@ -1092,12 +1114,14 @@ bot.on("message", (msg) => {
     const sel = userState[chatId];
     if ((msg.document || msg.photo) && sel && sel.step === 'waiting_receipt') {
         bot.forwardMessage(ADMIN_ID, chatId, msg.message_id).then((fwd) => {
-            bot.sendMessage(ADMIN_ID, `🛒 **Yeni Sipariş**
+            bot.sendMessage(ADMIN_ID, `🛒 **Yeni Sipariş Bildirimi**
 
-👤 Kullanıcı: ${chatId}
-📦 Ürün: ${sel.productName}
-⏱ Süre: ${sel.days} gün
-💰 Fiyat: ${sel.price}₺`, {
+👤 Kullanıcı: \`${chatId}\`
+📦 Ürün: **${sel.productName}**
+⏱ Süre: **${sel.days} gün**
+💰 Fiyat: **${sel.price}₺**
+
+📋 Dekont yukarıda. Kontrol edip onaylıyor musunuz?`, {
                 parse_mode: "Markdown",
                 reply_to_message_id: fwd.message_id,
                 reply_markup: {
@@ -1111,7 +1135,12 @@ bot.on("message", (msg) => {
             });
         }).catch(() => {});
         
-        bot.sendMessage(chatId, "📤 **Dekontunuz alındı!**\n\nOnay sonrası ürününüz teslim edilecektir.", { parse_mode: "Markdown" });
+        bot.sendMessage(chatId, `📤 **Dekontunuz Alındı!**
+
+✅ Kontrol edildikten ve admin onayından sonra ürününüz teslim edilecektir.
+
+⏳ Yoğunluğa göre süre uzayabilir.
+🙏 Lütfen bekleyiniz. Teşekkür ederiz.`, { parse_mode: "Markdown" });
     }
 });
 
