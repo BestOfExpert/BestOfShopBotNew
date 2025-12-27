@@ -845,6 +845,29 @@ if (filesBot) {
     const filesUserSessions = new Map();
     const filesProductUploads = new Map();
     const FILES_PRODUCTS_FILE = path.join(__dirname, 'files_products.json');
+    const PRODUCT_MAPPING_FILE = path.join(__dirname, 'product_mapping.json');
+
+    // Ürün eşleştirme: Shop bot ürün adı -> Files bot menü adları (array)
+    // Format: { "Shop Ürün Adı": ["Files Menü 1", "Files Menü 2"] }
+    let productMapping = {};
+
+    function loadProductMapping() {
+        try {
+            if (fs.existsSync(PRODUCT_MAPPING_FILE)) {
+                productMapping = JSON.parse(fs.readFileSync(PRODUCT_MAPPING_FILE, 'utf-8'));
+            }
+        } catch (e) {}
+    }
+    loadProductMapping();
+
+    function saveProductMapping() {
+        fs.writeFileSync(PRODUCT_MAPPING_FILE, JSON.stringify(productMapping, null, 2), 'utf-8');
+    }
+
+    // Shop ürününe karşılık gelen Files menülerini getir
+    function getFilesMenusForShopProduct(shopProductName) {
+        return productMapping[shopProductName] || [];
+    }
 
     // Dosya ürünlerini yükle
     function loadFilesProducts() {
@@ -1039,12 +1062,14 @@ if (filesBot) {
         if (chatId !== ADMIN_ID) return filesBot.sendMessage(chatId, "Yetkisiz.");
 
         const productCount = filesProductUploads.size;
-        filesBot.sendMessage(chatId, `**📁 Files Bot Admin Paneli**\n\nToplam ürün: ${productCount}`, {
+        const mappingCount = Object.keys(productMapping).length;
+        filesBot.sendMessage(chatId, `**📁 Files Bot Admin Paneli**\n\nToplam menü: ${productCount}\nEşleştirme: ${mappingCount}`, {
             parse_mode: 'Markdown',
             reply_markup: {
                 inline_keyboard: [
                     [{ text: '📦 Ürünleri Yönet', callback_data: 'files_products' }],
                     [{ text: '➕ Yeni Ürün Ekle', callback_data: 'files_add_product' }],
+                    [{ text: '🔗 Ürün Eşleştir', callback_data: 'files_mapping' }],
                     [{ text: '🔑 Anahtarları Yönet', callback_data: 'files_keys' }],
                 ],
             },
@@ -1399,15 +1424,271 @@ if (filesBot) {
         if (data === 'files_back') {
             delete filesAdminState[chatId];
             const productCount = filesProductUploads.size;
-            return filesBot.sendMessage(chatId, `**📁 Files Bot Admin Paneli**\n\nToplam ürün: ${productCount}`, {
+            const mappingCount = Object.keys(productMapping).length;
+            return filesBot.sendMessage(chatId, `**📁 Files Bot Admin Paneli**\n\nToplam menü: ${productCount}\nEşleştirme: ${mappingCount}`, {
                 parse_mode: 'Markdown',
                 reply_markup: {
                     inline_keyboard: [
                         [{ text: '📦 Ürünleri Yönet', callback_data: 'files_products' }],
                         [{ text: '➕ Yeni Ürün Ekle', callback_data: 'files_add_product' }],
+                        [{ text: '🔗 Ürün Eşleştir', callback_data: 'files_mapping' }],
                         [{ text: '🔑 Anahtarları Yönet', callback_data: 'files_keys' }],
                     ],
                 },
+            });
+        }
+
+        // ========== ÜRÜN EŞLEŞTİRME SİSTEMİ ==========
+        
+        // Eşleştirme ana menüsü
+        if (data === 'files_mapping') {
+            const shopProducts = loadProducts();
+            const shopProductNames = [];
+            for (const cat in shopProducts) {
+                for (const prodName in shopProducts[cat]) {
+                    shopProductNames.push(prodName);
+                }
+            }
+            
+            const mappingCount = Object.keys(productMapping).length;
+            let text = `**🔗 Ürün Eşleştirme**\n\n`;
+            text += `📊 Toplam eşleştirme: ${mappingCount}\n`;
+            text += `🏪 Shop ürün sayısı: ${shopProductNames.length}\n`;
+            text += `📁 Files menü sayısı: ${filesProductUploads.size}\n\n`;
+            text += `Bir Shop ürünü seçip hangi Files menülerine erişim vereceğini ayarlayın.`;
+            
+            return filesBot.sendMessage(chatId, text, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '🏪 Shop Ürünü Seç', callback_data: 'files_map_select_shop' }],
+                        [{ text: '📋 Mevcut Eşleştirmeler', callback_data: 'files_map_list' }],
+                        [{ text: '🔙 Geri', callback_data: 'files_back' }],
+                    ],
+                },
+            });
+        }
+
+        // Shop ürünlerini listele
+        if (data === 'files_map_select_shop') {
+            const shopProducts = loadProducts();
+            const buttons = [];
+            
+            for (const cat in shopProducts) {
+                for (const prodName in shopProducts[cat]) {
+                    const shortName = prodName.length > 28 ? prodName.substring(0, 28) + '...' : prodName;
+                    const mapped = productMapping[prodName] ? '✅' : '❌';
+                    buttons.push([{ text: `${mapped} ${shortName}`, callback_data: `files_map_shop_${prodName.substring(0, 25)}` }]);
+                }
+            }
+            
+            if (buttons.length === 0) {
+                return filesBot.sendMessage(chatId, '❌ Shop bot\'ta ürün bulunamadı.', {
+                    reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'files_mapping' }]] }
+                });
+            }
+            
+            buttons.push([{ text: '🔙 Geri', callback_data: 'files_mapping' }]);
+            
+            return filesBot.sendMessage(chatId, '**🏪 Shop Ürünleri**\n\n✅ = Eşleştirilmiş\n❌ = Eşleştirilmemiş\n\nEşleştirmek istediğiniz ürünü seçin:', {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: buttons.slice(0, 15) }, // Max 15 göster
+            });
+        }
+
+        // Shop ürünü seçildi
+        if (data.startsWith('files_map_shop_')) {
+            const searchName = data.substring(15);
+            const shopProducts = loadProducts();
+            let selectedShopProduct = null;
+            
+            for (const cat in shopProducts) {
+                for (const prodName in shopProducts[cat]) {
+                    if (prodName.startsWith(searchName)) {
+                        selectedShopProduct = prodName;
+                        break;
+                    }
+                }
+                if (selectedShopProduct) break;
+            }
+            
+            if (!selectedShopProduct) return filesBot.sendMessage(chatId, '❌ Ürün bulunamadı.');
+            
+            filesAdminState[chatId] = { action: 'mapping', shopProduct: selectedShopProduct };
+            
+            const currentMappings = productMapping[selectedShopProduct] || [];
+            const currentList = currentMappings.length > 0 
+                ? currentMappings.map((m, i) => `${i + 1}. ${m}`).join('\n')
+                : '(Henüz eşleştirme yok)';
+            
+            let text = `**🔗 Eşleştirme: ${selectedShopProduct}**\n\n`;
+            text += `📁 **Mevcut eşleştirmeler:**\n${currentList}\n\n`;
+            text += `Bu Shop ürününe hangi Files menülerini eklemek/çıkarmak istiyorsunuz?`;
+            
+            return filesBot.sendMessage(chatId, text, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '➕ Menü Ekle', callback_data: 'files_map_add_menu' }],
+                        [{ text: '➖ Menü Çıkar', callback_data: 'files_map_remove_menu' }],
+                        [{ text: '🗑 Tüm Eşleştirmeyi Sil', callback_data: 'files_map_clear' }],
+                        [{ text: '🔙 Geri', callback_data: 'files_mapping' }],
+                    ],
+                },
+            });
+        }
+
+        // Menü ekle - Files menülerini listele
+        if (data === 'files_map_add_menu') {
+            const shopProduct = filesAdminState[chatId]?.shopProduct;
+            if (!shopProduct) return filesBot.sendMessage(chatId, '❌ Önce bir Shop ürünü seçin.');
+            
+            const filesMenus = Array.from(filesProductUploads.keys());
+            if (filesMenus.length === 0) {
+                return filesBot.sendMessage(chatId, '❌ Henüz Files menüsü yok. Önce menü ekleyin.', {
+                    reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: `files_map_shop_${shopProduct.substring(0, 25)}` }]] }
+                });
+            }
+            
+            const currentMappings = productMapping[shopProduct] || [];
+            const buttons = filesMenus.map(name => {
+                const shortName = name.length > 25 ? name.substring(0, 25) + '...' : name;
+                const alreadyMapped = currentMappings.includes(name) ? '✅' : '📁';
+                return [{ text: `${alreadyMapped} ${shortName}`, callback_data: `files_map_addm_${name.substring(0, 20)}` }];
+            });
+            
+            buttons.push([{ text: '🔙 İptal', callback_data: `files_map_shop_${shopProduct.substring(0, 25)}` }]);
+            
+            return filesBot.sendMessage(chatId, '**➕ Menü Ekle**\n\nEklemek istediğiniz Files menüsünü seçin:\n\n✅ = Zaten ekli', {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: buttons.slice(0, 12) },
+            });
+        }
+
+        // Menü ekleme işlemi
+        if (data.startsWith('files_map_addm_')) {
+            const shopProduct = filesAdminState[chatId]?.shopProduct;
+            if (!shopProduct) return filesBot.sendMessage(chatId, '❌ Önce bir Shop ürünü seçin.');
+            
+            const searchName = data.substring(15);
+            let filesMenu = null;
+            for (const name of filesProductUploads.keys()) {
+                if (name.startsWith(searchName)) {
+                    filesMenu = name;
+                    break;
+                }
+            }
+            
+            if (!filesMenu) return filesBot.sendMessage(chatId, '❌ Menü bulunamadı.');
+            
+            // Eşleştirmeyi kaydet
+            if (!productMapping[shopProduct]) productMapping[shopProduct] = [];
+            if (!productMapping[shopProduct].includes(filesMenu)) {
+                productMapping[shopProduct].push(filesMenu);
+                saveProductMapping();
+            }
+            
+            return filesBot.sendMessage(chatId, `✅ **${filesMenu}** → **${shopProduct}** eşleştirildi!`, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: [[{ text: '🔙 Ürüne Dön', callback_data: `files_map_shop_${shopProduct.substring(0, 25)}` }]] }
+            });
+        }
+
+        // Menü çıkar - Mevcut eşleştirmeleri listele
+        if (data === 'files_map_remove_menu') {
+            const shopProduct = filesAdminState[chatId]?.shopProduct;
+            if (!shopProduct) return filesBot.sendMessage(chatId, '❌ Önce bir Shop ürünü seçin.');
+            
+            const currentMappings = productMapping[shopProduct] || [];
+            if (currentMappings.length === 0) {
+                return filesBot.sendMessage(chatId, '❌ Bu ürüne eşleştirilmiş menü yok.', {
+                    reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: `files_map_shop_${shopProduct.substring(0, 25)}` }]] }
+                });
+            }
+            
+            const buttons = currentMappings.map(name => {
+                const shortName = name.length > 25 ? name.substring(0, 25) + '...' : name;
+                return [{ text: `❌ ${shortName}`, callback_data: `files_map_remm_${name.substring(0, 20)}` }];
+            });
+            buttons.push([{ text: '🔙 İptal', callback_data: `files_map_shop_${shopProduct.substring(0, 25)}` }]);
+            
+            return filesBot.sendMessage(chatId, '**➖ Menü Çıkar**\n\nÇıkarmak istediğinizi seçin:', {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: buttons },
+            });
+        }
+
+        // Menü çıkarma işlemi
+        if (data.startsWith('files_map_remm_')) {
+            const shopProduct = filesAdminState[chatId]?.shopProduct;
+            if (!shopProduct) return filesBot.sendMessage(chatId, '❌ Önce bir Shop ürünü seçin.');
+            
+            const searchName = data.substring(15);
+            const currentMappings = productMapping[shopProduct] || [];
+            
+            let filesMenu = null;
+            for (const name of currentMappings) {
+                if (name.startsWith(searchName)) {
+                    filesMenu = name;
+                    break;
+                }
+            }
+            
+            if (!filesMenu) return filesBot.sendMessage(chatId, '❌ Menü bulunamadı.');
+            
+            // Eşleştirmeden çıkar
+            const idx = productMapping[shopProduct].indexOf(filesMenu);
+            if (idx > -1) {
+                productMapping[shopProduct].splice(idx, 1);
+                if (productMapping[shopProduct].length === 0) {
+                    delete productMapping[shopProduct];
+                }
+                saveProductMapping();
+            }
+            
+            return filesBot.sendMessage(chatId, `✅ **${filesMenu}** eşleştirmeden çıkarıldı!`, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: [[{ text: '🔙 Ürüne Dön', callback_data: `files_map_shop_${shopProduct.substring(0, 25)}` }]] }
+            });
+        }
+
+        // Tüm eşleştirmeyi sil
+        if (data === 'files_map_clear') {
+            const shopProduct = filesAdminState[chatId]?.shopProduct;
+            if (!shopProduct) return filesBot.sendMessage(chatId, '❌ Önce bir Shop ürünü seçin.');
+            
+            delete productMapping[shopProduct];
+            saveProductMapping();
+            
+            return filesBot.sendMessage(chatId, `✅ **${shopProduct}** için tüm eşleştirmeler silindi!`, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'files_mapping' }]] }
+            });
+        }
+
+        // Mevcut eşleştirmeleri listele
+        if (data === 'files_map_list') {
+            const mappings = Object.entries(productMapping);
+            
+            if (mappings.length === 0) {
+                return filesBot.sendMessage(chatId, '📋 Henüz eşleştirme yapılmamış.', {
+                    reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'files_mapping' }]] }
+                });
+            }
+            
+            let text = '**📋 Mevcut Eşleştirmeler**\n\n';
+            mappings.forEach(([shopProd, filesMenus], i) => {
+                const shortShop = shopProd.length > 30 ? shopProd.substring(0, 30) + '...' : shopProd;
+                text += `**${i + 1}. ${shortShop}**\n`;
+                filesMenus.forEach(menu => {
+                    text += `   → ${menu}\n`;
+                });
+                text += '\n';
+            });
+            
+            return filesBot.sendMessage(chatId, text, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'files_mapping' }]] }
             });
         }
     });
@@ -1425,18 +1706,34 @@ if (filesBot) {
                 const purchasedProducts = keyInfo.products || [];
                 const daysLeft = Math.ceil((keyInfo.expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
                 
+                // Shop ürünlerini Files menülerine çevir (eşleştirme kullan)
+                const accessibleMenus = [];
+                for (const shopProduct of purchasedProducts) {
+                    const mappedMenus = getFilesMenusForShopProduct(shopProduct);
+                    if (mappedMenus.length > 0) {
+                        // Eşleştirme varsa onları ekle
+                        mappedMenus.forEach(menu => {
+                            if (!accessibleMenus.includes(menu)) accessibleMenus.push(menu);
+                        });
+                    } else {
+                        // Eşleştirme yoksa direkt shop ürün adını kullan (geriye uyumluluk)
+                        if (!accessibleMenus.includes(shopProduct)) accessibleMenus.push(shopProduct);
+                    }
+                }
+                
                 filesUserSessions.set(chatId, { 
                     step: 'validated', 
                     key: text, 
-                    products: purchasedProducts,
+                    products: purchasedProducts,  // Shop ürünleri (orijinal)
+                    accessibleMenus: accessibleMenus,  // Files menüleri (erişebileceği)
                     expiresAt: keyInfo.expiresAt
                 });
                 
-                // Tüm satın aldığı ürünlerin butonlarını göster (2'li sıra)
+                // Erişebileceği menülerin butonlarını göster (2'li sıra)
                 const keyboard = [];
-                for (let i = 0; i < purchasedProducts.length; i += 2) {
-                    const row = [purchasedProducts[i]];
-                    if (purchasedProducts[i + 1]) row.push(purchasedProducts[i + 1]);
+                for (let i = 0; i < accessibleMenus.length; i += 2) {
+                    const row = [accessibleMenus[i]];
+                    if (accessibleMenus[i + 1]) row.push(accessibleMenus[i + 1]);
                     keyboard.push(row);
                 }
                 
@@ -1448,10 +1745,10 @@ if (filesBot) {
                     }
                 };
                 
-                const productList = purchasedProducts.map((p, i) => `${i + 1}. ${p}`).join('\n');
+                const productList = accessibleMenus.map((p, i) => `${i + 1}. ${p}`).join('\n');
                 const welcomeMsg = `✅ **Anahtar Doğrulandı!**\n\n` +
                     `👋 Hoş geldiniz!\n\n` +
-                    `📦 **Ürünleriniz:**\n${productList}\n\n` +
+                    `📦 **Erişebileceğiniz Ürünler:**\n${productList}\n\n` +
                     `📅 **Kalan Süre:** ${daysLeft} gün\n\n` +
                     `Aşağıdaki butonlardan ürün seçerek dosyalarınıza erişebilirsiniz. 👇`;
                 
@@ -1462,18 +1759,18 @@ if (filesBot) {
             return;
         }
 
-        // Ürün seçimi - Sadece satın aldığı ürünlere erişebilir
+        // Ürün seçimi - Sadece erişebileceği menülere erişebilir
         if (session && session.step === 'validated' && text && !text.startsWith('/')) {
-            const purchasedProducts = session.products || [];
+            const accessibleMenus = session.accessibleMenus || [];
             
-            // Kullanıcı sadece aldığı ürünlere erişebilir
-            if (!purchasedProducts.includes(text)) {
-                const productList = purchasedProducts.map((p, i) => `${i + 1}. ${p}`).join('\n');
-                filesSendAndDelete('sendMessage', chatId, `⚠️ Bu ürüne erişim yetkiniz yok.\n\n📦 **Satın aldığınız ürünler:**\n${productList}\n\nFarklı bir ürün için yeni anahtar satın almanız gerekiyor.`, { parse_mode: 'Markdown' });
+            // Kullanıcı sadece eşleştirilmiş menülere erişebilir
+            if (!accessibleMenus.includes(text)) {
+                const productList = accessibleMenus.map((p, i) => `${i + 1}. ${p}`).join('\n');
+                filesSendAndDelete('sendMessage', chatId, `⚠️ Bu ürüne erişim yetkiniz yok.\n\n📦 **Erişebileceğiniz ürünler:**\n${productList}\n\nFarklı bir ürün için yeni anahtar satın almanız gerekiyor.`, { parse_mode: 'Markdown' });
                 return;
             }
             
-            // Kullanıcının aldığı ürünün dosyalarını göster
+            // Kullanıcının erişebileceği menünün dosyalarını göster
             if (filesProductUploads.has(text)) {
                 const product = filesProductUploads.get(text);
 
