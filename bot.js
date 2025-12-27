@@ -172,7 +172,8 @@ bot.onText(/\/admin/, (msg) => {
             inline_keyboard: [
                 [{ text: "🛠 Ürünleri Yönet", callback_data: "admin_products" }],
                 [{ text: "➕ Ürün Ekle", callback_data: "admin_add_product" }],
-                [{ text: "📣 Menüyü Gönder (Preview)", callback_data: "admin_preview_menu" }],
+                [{ text: "� Anahtarları Yönet", callback_data: "admin_keys" }],
+                [{ text: "�📣 Menüyü Gönder (Preview)", callback_data: "admin_preview_menu" }],
             ],
         },
     });
@@ -345,6 +346,68 @@ bot.on("callback_query", (query) => {
         const categories = Object.keys(products);
         const text = `**Menü Önizlemesi**\n\n${categories.map((c) => `• *${c}*`).join('\n')}`;
         return bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
+    }
+
+    // ============== ANAHTAR YÖNETİMİ ==============
+    if (data === 'admin_keys' && chatId === ADMIN_ID) {
+        const keyCount = Object.keys(activeKeys).length;
+        return bot.sendMessage(chatId, `**🔑 Anahtar Yönetimi**\n\nToplam aktif anahtar: ${keyCount}`, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '📋 Anahtarları Listele', callback_data: 'admin_keys_list' }],
+                    [{ text: '➕ Manuel Anahtar Ekle', callback_data: 'admin_keys_add' }],
+                    [{ text: '🗑 Anahtar Sil', callback_data: 'admin_keys_delete' }],
+                    [{ text: '🔙 Geri', callback_data: 'admin_back' }],
+                ],
+            },
+        });
+    }
+
+    if (data === 'admin_keys_list' && chatId === ADMIN_ID) {
+        const now = Date.now();
+        const keyList = Object.values(activeKeys);
+        if (keyList.length === 0) {
+            return bot.sendMessage(chatId, '📋 Hiç aktif anahtar yok.');
+        }
+        let text = '**📋 Aktif Anahtarlar:**\n\n';
+        keyList.forEach((entry, i) => {
+            const daysLeft = Math.ceil((entry.expiresAt - now) / (24 * 60 * 60 * 1000));
+            const status = daysLeft > 0 ? `${daysLeft} gün kaldı` : '⚠️ Süresi dolmuş';
+            text += `${i + 1}. \`${entry.key}\`\n   📦 ${entry.product || 'Bilinmiyor'}\n   ⏳ ${status}\n\n`;
+        });
+        return bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
+    }
+
+    if (data === 'admin_keys_add' && chatId === ADMIN_ID) {
+        adminState[chatId] = { action: 'add_key', step: 1 };
+        return bot.sendMessage(chatId, '🔑 **Manuel Anahtar Ekleme**\n\nLütfen anahtarı ve süresini şu formatta girin:\n\n`anahtar süre`\n\nÖrnek: `PREMIUM_KEY_123 30`\n\n(30 = 30 gün geçerli)', { parse_mode: 'Markdown' });
+    }
+
+    if (data === 'admin_keys_delete' && chatId === ADMIN_ID) {
+        const keyList = Object.values(activeKeys);
+        if (keyList.length === 0) {
+            return bot.sendMessage(chatId, '📋 Silinecek anahtar yok.');
+        }
+        const buttons = keyList.slice(0, 10).map((entry) => [
+            { text: `🗑 ${entry.key.substring(0, 20)}...`, callback_data: makeCallbackRef({ type: 'admin_delete_key', oderId: entry.oderId }) }
+        ]);
+        buttons.push([{ text: '🔙 Geri', callback_data: 'admin_keys' }]);
+        return bot.sendMessage(chatId, '**🗑 Silmek istediğiniz anahtarı seçin:**', {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: buttons },
+        });
+    }
+
+    // Admin: delete specific key
+    if (ref && ref.type === 'admin_delete_key' && chatId === ADMIN_ID) {
+        const entry = activeKeys[ref.oderId];
+        if (entry) {
+            delete activeKeys[ref.oderId];
+            saveKeys(activeKeys);
+            return bot.sendMessage(chatId, `✅ Anahtar silindi: \`${entry.key}\``, { parse_mode: 'Markdown' });
+        }
+        return bot.sendMessage(chatId, '❌ Anahtar bulunamadı.');
     }
 
     if (data === "main_menu") {
@@ -575,6 +638,38 @@ bot.on("message", (msg) => {
             delete adminState[chatId];
             delete users[userId];
             return;
+        }
+
+        // Admin: manuel anahtar ekleme
+        if (state.action === 'add_key') {
+            const text = (msg.text || '').trim();
+            const parts = text.split(/\s+/);
+            if (parts.length < 2) {
+                return bot.sendMessage(chatId, 'Geçersiz format. Lütfen şu şekilde girin: `anahtar süre`\nÖrnek: `PREMIUM_KEY_123 30`', { parse_mode: 'Markdown' });
+            }
+            const key = parts.slice(0, -1).join('_'); // Boşlukları _ ile değiştir
+            const days = parseInt(parts[parts.length - 1], 10);
+            if (isNaN(days) || days <= 0) {
+                return bot.sendMessage(chatId, 'Geçersiz süre. Lütfen gün sayısını rakam olarak girin.');
+            }
+
+            const expiresAt = Date.now() + days * 24 * 60 * 60 * 1000;
+            const orderId = `manual_${Date.now()}`;
+
+            // Save key info
+            activeKeys[orderId] = {
+                oderId: orderId,
+                chatId: ADMIN_ID, // Manuel eklenen için admin ID
+                product: 'Manuel Eklenen',
+                key: key,
+                expiresAt: expiresAt,
+                notified: false
+            };
+            saveKeys(activeKeys);
+
+            const expiryDate = new Date(expiresAt).toLocaleDateString('tr-TR');
+            delete adminState[chatId];
+            return bot.sendMessage(chatId, `✅ **Anahtar eklendi!**\n\n🔑 Anahtar: \`${key}\`\n📅 Süre: ${days} gün (${expiryDate} tarihine kadar)`, { parse_mode: 'Markdown' });
         }
 
         if (state.action === 'edit_price') {
