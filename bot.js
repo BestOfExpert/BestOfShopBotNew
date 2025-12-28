@@ -896,8 +896,18 @@ ${badge}
 });
 
 // ============== /ADMIN KOMUTU ==============
+// Shop Bot admin paneli - sadece Shop Bot üzerinden gelen /admin komutlarına yanıt ver
 bot.onText(/\/admin/, (msg) => {
     const chatId = msg.chat.id;
+    
+    // Files Bot aktifse ve bu mesaj Files Bot'tan geliyorsa atla
+    // (Files Bot kendi /admin handler'ı ile yanıt verecek)
+    if (filesBot) {
+        // Files Bot başlatılmış, kontrol et
+        console.log(`[Shop Bot] /admin komutu alındı - Files Bot aktif, bu handler atlanıyor`);
+        return; // Files Bot varsa Shop Bot /admin'e yanıt vermesin
+    }
+    
     if (chatId !== ADMIN_ID) {
         return bot.sendMessage(chatId, "❌ Yetkisiz erişim.");
     }
