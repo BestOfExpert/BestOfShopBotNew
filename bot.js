@@ -919,8 +919,6 @@ Yapmak istediğiniz işlemi seçin:`;
                 [{ text: "📁 Kategorileri Yönet", callback_data: "admin_categories" }],
                 [{ text: "📦 Ürünleri Yönet", callback_data: "admin_products" }],
                 [{ text: "➕ Yeni Ürün Ekle", callback_data: "admin_add_product" }],
-                [{ text: "🔗 Ürün Eşleştir", callback_data: "admin_mapping" }],
-                [{ text: "📱 UDID Aldırma", callback_data: "admin_udid_menu" }],
                 [{ text: "⏱ Süre Seçenekleri", callback_data: "admin_durations" }],
                 [{ text: "💳 Ödeme Ayarları", callback_data: "admin_payment" }],
                 [{ text: "🔑 Anahtarlar", callback_data: "admin_keys" }],
