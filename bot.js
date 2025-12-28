@@ -4660,8 +4660,8 @@ if (filesBot) {
                     [{ text: '📦 Ürünleri Yönet', callback_data: 'files_products' }],
                     [{ text: '➕ Yeni Ürün Ekle', callback_data: 'files_add_product' }],
                     [{ text: '🔗 Ürün Eşleştir', callback_data: 'files_mapping' }],
-                    [{ text: '� UDID Aldırma', callback_data: 'files_udid_menu' }],
-                    [{ text: '�🔑 Anahtarları Yönet', callback_data: 'files_keys' }],
+                    [{ text: '📱 UDID Aldırma', callback_data: 'files_udid_menu' }],
+                    [{ text: '🔑 Anahtarları Yönet', callback_data: 'files_keys' }],
                 ],
             },
         });
@@ -5003,7 +5003,7 @@ if (filesBot) {
                         [{ text: '📦 Ürünleri Yönet', callback_data: 'files_products' }],
                         [{ text: '➕ Yeni Ürün Ekle', callback_data: 'files_add_product' }],
                         [{ text: '🔗 Ürün Eşleştir', callback_data: 'files_mapping' }],
-                        [{ text: '� UDID Aldırma', callback_data: 'files_udid_menu' }],
+                        [{ text: '📱 UDID Aldırma', callback_data: 'files_udid_menu' }],
                         [{ text: '🔑 Anahtarları Yönet', callback_data: 'files_keys' }],
                     ],
                 },
@@ -5734,3 +5734,4 @@ if (filesBot) {
 
     console.log('Files bot handlers registered.');
 }
+
