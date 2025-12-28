@@ -5567,18 +5567,11 @@ if (filesBot) {
         const text = msg.text?.trim();
         const session = filesUserSessions.get(chatId);
 
-        // Admin değilse ve session yoksa - /start yönlendir
-        // Ama pending fcode kontrolü yap (admin'e giden mesajlar için sorun yaratmasın)
-        if (!session && chatId !== ADMIN_ID && text && !text.startsWith('/')) {
-            // Pending fcode'da bu kullanıcı var mı kontrol et
-            const hasPendingFcode = Object.values(pendingFcodes).some(f => f.chatId === chatId);
-            if (!hasPendingFcode) {
-                return filesBot.sendMessage(chatId, `⚠️ <b>Oturum bulunamadı</b>\n\nBotu başlatmak için /start yazın.`, { parse_mode: 'HTML' });
-            }
-        }
+        // Komutları ignore et (/, /start, /admin vs.)
+        if (!text || text.startsWith('/')) return;
 
         // Anahtar doğrulama
-        if (session && session.step === 'awaiting_key' && text && !text.startsWith('/')) {
+        if (session && session.step === 'awaiting_key') {
             const keyInfo = getKeyInfo(text);
             if (keyInfo) {
                 const purchasedProducts = keyInfo.products || [];
