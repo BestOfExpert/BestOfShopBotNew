@@ -4351,9 +4351,17 @@ if (filesBot) {
     // FILES BOT: /start
     filesBot.onText(/\/start/, (msg) => {
         const chatId = msg.chat.id;
+        
+        // Duplicate kontrol - son 3 saniye içinde /start geldiyse atla
+        const now = Date.now();
+        const session = filesUserSessions.get(chatId);
+        if (session && session.lastStart && (now - session.lastStart) < 3000) {
+            return; // 3 saniye içinde tekrar /start geldi, atla
+        }
+        
         // Admin state'i temizle (varsa)
         delete filesAdminState[chatId];
-        filesUserSessions.set(chatId, { step: 'awaiting_key' });
+        filesUserSessions.set(chatId, { step: 'awaiting_key', lastStart: now });
         filesSendAndDelete('sendMessage', chatId, '🔐 Lütfen ürün anahtarınızı girin:');
     });
 
