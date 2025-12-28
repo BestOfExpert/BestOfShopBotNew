@@ -5577,9 +5577,9 @@ if (filesBot) {
         // Komutları ignore et (/, /start, /admin vs.)
         if (!text || text.startsWith('/')) return;
 
-        // Anahtar doğrulama
-        if (session && session.step === 'awaiting_key') {
-            console.log(`[Files Bot] awaiting_key - anahtar kontrol ediliyor: ${text}`);
+        // Anahtar doğrulama - session yoksa veya awaiting_key ise
+        if (!session || session.step === 'awaiting_key') {
+            console.log(`[Files Bot] Anahtar kontrol ediliyor: ${text}`);
             const keyInfo = getKeyInfo(text);
             if (keyInfo) {
                 console.log(`[Files Bot] Anahtar BULUNDU, session validated yapılıyor`);
