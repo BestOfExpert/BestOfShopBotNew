@@ -4844,11 +4844,196 @@ if (filesBot) {
                 parse_mode: 'Markdown',
                 reply_markup: {
                     inline_keyboard: [
+                        [{ text: '➕ Manuel Anahtar Ekle', callback_data: 'files_key_manual_add' }],
                         [{ text: '🔍 Anahtar Ara', callback_data: 'files_key_search' }],
                         [{ text: '📋 Son 10 Anahtar', callback_data: 'files_key_list' }],
                         [{ text: '🔙 Geri', callback_data: 'files_back' }],
                     ],
                 },
+            });
+        }
+        
+        // Manuel anahtar ekleme - Adım 1: Anahtar iste
+        if (data === 'files_key_manual_add') {
+            filesAdminState[chatId] = { action: 'manual_key_step1' };
+            return filesBot.sendMessage(chatId, `**➕ Manuel Anahtar Ekleme**\n\n🔑 Eklemek istediğiniz anahtarı yazın:`, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: [[{ text: '❌ İptal', callback_data: 'files_keys' }]] }
+            });
+        }
+        
+        // Manuel anahtar - Menü seçimi (çoklu seçim)
+        if (data === 'files_key_manual_menus') {
+            const state = filesAdminState[chatId];
+            if (!state || state.action !== 'manual_key_step2') {
+                return filesBot.sendMessage(chatId, '❌ Oturum hatası. Tekrar başlayın.');
+            }
+            
+            const filesMenus = Array.from(filesProductUploads.keys());
+            if (filesMenus.length === 0) {
+                delete filesAdminState[chatId];
+                return filesBot.sendMessage(chatId, '❌ Henüz menü oluşturulmamış. Önce menü ekleyin.', {
+                    reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'files_keys' }]] }
+                });
+            }
+            
+            const selectedMenus = state.selectedMenus || [];
+            const buttons = filesMenus.map(name => {
+                const isSelected = selectedMenus.includes(name);
+                const icon = isSelected ? '✅' : '⬜';
+                return [{ text: `${icon} ${name.substring(0, 28)}`, callback_data: `files_key_toggle_menu_${name.substring(0, 20)}` }];
+            });
+            
+            // Onay ve iptal butonları
+            buttons.push([{ text: `✅ Seçimi Tamamla (${selectedMenus.length} menü)`, callback_data: 'files_key_manual_confirm' }]);
+            buttons.push([{ text: '❌ İptal', callback_data: 'files_keys' }]);
+            
+            const selectedList = selectedMenus.length > 0 
+                ? selectedMenus.map((m, i) => `${i + 1}. ${m}`).join('\n') 
+                : '(Henüz seçilmedi)';
+            
+            return filesBot.sendMessage(chatId, `**📦 Menü Seçimi**\n\n🔑 Anahtar: \`${state.key}\`\n📅 Süre: ${state.days} gün\n\n**Seçilen Menüler:**\n${selectedList}\n\n👇 Erişim verilecek menüleri seçin (birden fazla seçebilirsiniz):`, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: buttons.slice(0, 20) }
+            });
+        }
+        
+        // Menü toggle (seç/kaldır)
+        if (data.startsWith('files_key_toggle_menu_')) {
+            const state = filesAdminState[chatId];
+            if (!state || state.action !== 'manual_key_step2') {
+                return filesBot.sendMessage(chatId, '❌ Oturum hatası.');
+            }
+            
+            const searchName = data.substring(22);
+            let menuName = null;
+            for (const name of filesProductUploads.keys()) {
+                if (name.startsWith(searchName)) {
+                    menuName = name;
+                    break;
+                }
+            }
+            
+            if (!menuName) return filesBot.answerCallbackQuery(chatId);
+            
+            if (!state.selectedMenus) state.selectedMenus = [];
+            
+            const idx = state.selectedMenus.indexOf(menuName);
+            if (idx > -1) {
+                state.selectedMenus.splice(idx, 1);
+            } else {
+                state.selectedMenus.push(menuName);
+            }
+            
+            // Menü listesini güncelle
+            const filesMenus = Array.from(filesProductUploads.keys());
+            const buttons = filesMenus.map(name => {
+                const isSelected = state.selectedMenus.includes(name);
+                const icon = isSelected ? '✅' : '⬜';
+                return [{ text: `${icon} ${name.substring(0, 28)}`, callback_data: `files_key_toggle_menu_${name.substring(0, 20)}` }];
+            });
+            buttons.push([{ text: `✅ Seçimi Tamamla (${state.selectedMenus.length} menü)`, callback_data: 'files_key_manual_confirm' }]);
+            buttons.push([{ text: '❌ İptal', callback_data: 'files_keys' }]);
+            
+            const selectedList = state.selectedMenus.length > 0 
+                ? state.selectedMenus.map((m, i) => `${i + 1}. ${m}`).join('\n') 
+                : '(Henüz seçilmedi)';
+            
+            return filesBot.editMessageText(`**📦 Menü Seçimi**\n\n🔑 Anahtar: \`${state.key}\`\n📅 Süre: ${state.days} gün\n\n**Seçilen Menüler:**\n${selectedList}\n\n👇 Erişim verilecek menüleri seçin (birden fazla seçebilirsiniz):`, {
+                chat_id: chatId,
+                message_id: query.message.message_id,
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: buttons.slice(0, 20) }
+            });
+        }
+        
+        // Manuel anahtar onayı - kaydet
+        if (data === 'files_key_manual_confirm') {
+            const state = filesAdminState[chatId];
+            if (!state || state.action !== 'manual_key_step2') {
+                return filesBot.sendMessage(chatId, '❌ Oturum hatası.');
+            }
+            
+            if (!state.selectedMenus || state.selectedMenus.length === 0) {
+                return filesBot.sendMessage(chatId, '⚠️ En az bir menü seçmelisiniz!', {
+                    reply_markup: { inline_keyboard: [[{ text: '🔙 Menü Seçimine Dön', callback_data: 'files_key_manual_menus' }]] }
+                });
+            }
+            
+            // Anahtarı kaydet
+            const orderId = `manual_${Date.now()}`;
+            const expiresAt = Date.now() + state.days * 24 * 60 * 60 * 1000;
+            
+            activeKeys[orderId] = {
+                orderId: orderId,
+                chatId: 0, // Manuel eklenen, henüz kullanıcıya atanmadı
+                products: state.selectedMenus, // Seçilen menüler
+                key: state.key,
+                expiresAt: expiresAt,
+                notified: false,
+                manual: true // Manuel eklendiğini belirt
+            };
+            saveKeys(activeKeys);
+            
+            const expiryDate = new Date(expiresAt).toLocaleDateString('tr-TR');
+            const menuList = state.selectedMenus.map((m, i) => `${i + 1}. ${m}`).join('\n');
+            
+            delete filesAdminState[chatId];
+            
+            return filesBot.sendMessage(chatId, `✅ **Anahtar Başarıyla Eklendi!**\n\n🔑 Anahtar: \`${state.key}\`\n📅 Süre: ${state.days} gün\n📆 Bitiş: ${expiryDate}\n\n📦 **Erişim Verilen Menüler:**\n${menuList}`, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: [[{ text: '🔙 Anahtar Yönetimi', callback_data: 'files_keys' }]] }
+            });
+        }
+        
+        // Manuel anahtar - Gün seçimleri
+        if (data.startsWith('files_manual_days_')) {
+            const state = filesAdminState[chatId];
+            if (!state || !state.key) {
+                return filesBot.sendMessage(chatId, '❌ Oturum hatası. Tekrar başlayın.');
+            }
+            
+            const daysPart = data.substring(18);
+            
+            // Manuel gün girişi
+            if (daysPart === 'custom') {
+                filesAdminState[chatId] = { action: 'manual_key_custom_days', key: state.key };
+                return filesBot.sendMessage(chatId, `🔑 Anahtar: \`${state.key}\`\n\n📅 Kaç gün geçerli olsun? (1-365 arası sayı girin):`, {
+                    parse_mode: 'Markdown',
+                    reply_markup: { inline_keyboard: [[{ text: '❌ İptal', callback_data: 'files_keys' }]] }
+                });
+            }
+            
+            const days = parseInt(daysPart);
+            if (isNaN(days) || days <= 0) {
+                return filesBot.sendMessage(chatId, '❌ Geçersiz süre!');
+            }
+            
+            filesAdminState[chatId] = { 
+                action: 'manual_key_step2', 
+                key: state.key, 
+                days: days,
+                selectedMenus: []
+            };
+            
+            // Menü seçimine yönlendir
+            const filesMenus = Array.from(filesProductUploads.keys());
+            if (filesMenus.length === 0) {
+                delete filesAdminState[chatId];
+                return filesBot.sendMessage(chatId, '❌ Henüz menü oluşturulmamış. Önce menü ekleyin.', {
+                    reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'files_keys' }]] }
+                });
+            }
+            
+            const buttons = filesMenus.map(name => {
+                return [{ text: `⬜ ${name.substring(0, 28)}`, callback_data: `files_key_toggle_menu_${name.substring(0, 20)}` }];
+            });
+            buttons.push([{ text: `✅ Seçimi Tamamla (0 menü)`, callback_data: 'files_key_manual_confirm' }]);
+            buttons.push([{ text: '❌ İptal', callback_data: 'files_keys' }]);
+            
+            return filesBot.sendMessage(chatId, `**📦 Menü Seçimi**\n\n🔑 Anahtar: \`${state.key}\`\n📅 Süre: ${days} gün\n\n**Seçilen Menüler:**\n(Henüz seçilmedi)\n\n👇 Erişim verilecek menüleri seçin (birden fazla seçebilirsiniz):`, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: buttons.slice(0, 20) }
             });
         }
 
@@ -5656,6 +5841,80 @@ if (filesBot) {
             return filesBot.sendMessage(chatId, `✅ **Teslim Edildi!**\n\n👤 Kullanıcı: \`${fcodeData.chatId}\`\n📦 Menü: **${fcodeData.menuName}**\n\n🔑 ID: \`${usernameId}\`\n🔐 Şifre: \`${password}\``, {
                 parse_mode: 'Markdown',
                 reply_markup: { inline_keyboard: [[{ text: '🔙 Taleplere Dön', callback_data: 'files_udid_pending' }]] }
+            });
+        }
+        
+        // Manuel anahtar ekleme - Adım 1: Anahtar girişi
+        if (state.action === 'manual_key_step1') {
+            const key = text.trim();
+            if (!key || key.length < 3) {
+                return filesBot.sendMessage(chatId, '❌ Geçersiz anahtar! En az 3 karakter olmalı.', {
+                    reply_markup: { inline_keyboard: [[{ text: '❌ İptal', callback_data: 'files_keys' }]] }
+                });
+            }
+            
+            // Anahtar zaten var mı kontrol et
+            const existingOrderId = findOrderIdByKey(key);
+            if (existingOrderId) {
+                return filesBot.sendMessage(chatId, '⚠️ Bu anahtar zaten mevcut! Farklı bir anahtar girin:', {
+                    reply_markup: { inline_keyboard: [[{ text: '❌ İptal', callback_data: 'files_keys' }]] }
+                });
+            }
+            
+            filesAdminState[chatId] = { action: 'manual_key_days', key: key };
+            return filesBot.sendMessage(chatId, `🔑 Anahtar: \`${key}\`\n\n📅 Kaç gün geçerli olsun?`, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: '7 Gün', callback_data: 'files_manual_days_7' },
+                            { text: '30 Gün', callback_data: 'files_manual_days_30' }
+                        ],
+                        [
+                            { text: '60 Gün', callback_data: 'files_manual_days_60' },
+                            { text: '90 Gün', callback_data: 'files_manual_days_90' }
+                        ],
+                        [{ text: '🔢 Manuel Gün Gir', callback_data: 'files_manual_days_custom' }],
+                        [{ text: '❌ İptal', callback_data: 'files_keys' }]
+                    ]
+                }
+            });
+        }
+        
+        // Manuel anahtar - Manuel gün girişi
+        if (state.action === 'manual_key_custom_days') {
+            const days = parseInt(text);
+            if (isNaN(days) || days <= 0 || days > 365) {
+                return filesBot.sendMessage(chatId, '❌ Geçersiz süre! 1-365 arası bir sayı girin:', {
+                    reply_markup: { inline_keyboard: [[{ text: '❌ İptal', callback_data: 'files_keys' }]] }
+                });
+            }
+            
+            filesAdminState[chatId] = { 
+                action: 'manual_key_step2', 
+                key: state.key, 
+                days: days,
+                selectedMenus: []
+            };
+            
+            // Menü seçimine yönlendir
+            const filesMenus = Array.from(filesProductUploads.keys());
+            if (filesMenus.length === 0) {
+                delete filesAdminState[chatId];
+                return filesBot.sendMessage(chatId, '❌ Henüz menü oluşturulmamış. Önce menü ekleyin.', {
+                    reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'files_keys' }]] }
+                });
+            }
+            
+            const buttons = filesMenus.map(name => {
+                return [{ text: `⬜ ${name.substring(0, 28)}`, callback_data: `files_key_toggle_menu_${name.substring(0, 20)}` }];
+            });
+            buttons.push([{ text: `✅ Seçimi Tamamla (0 menü)`, callback_data: 'files_key_manual_confirm' }]);
+            buttons.push([{ text: '❌ İptal', callback_data: 'files_keys' }]);
+            
+            return filesBot.sendMessage(chatId, `**📦 Menü Seçimi**\n\n🔑 Anahtar: \`${state.key}\`\n📅 Süre: ${days} gün\n\n**Seçilen Menüler:**\n(Henüz seçilmedi)\n\n👇 Erişim verilecek menüleri seçin (birden fazla seçebilirsiniz):`, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: buttons.slice(0, 20) }
             });
         }
 
