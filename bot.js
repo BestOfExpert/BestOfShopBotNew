@@ -5466,9 +5466,8 @@ if (filesBot) {
         // Geçersiz anahtar - hiçbir koşula uymadıysa (admin hariç)
         if (chatId !== ADMIN_ID) {
             console.log(`[Files Bot] Geçersiz anahtar, hata mesajı gönderiliyor`);
-            return filesBot.sendMessage(chatId, `❌ **Geçersiz Anahtar!**\n\nGirdiğiniz anahtar bulunamadı veya süresi dolmuş.\n\n🔑 Lütfen geçerli bir anahtar girin veya @BestOfShopFiles_Bot botundan yeni anahtar satın alın.`, {
-                parse_mode: 'Markdown'
-            }).catch(err => console.log('[Files Bot] Hata mesajı gönderilemedi:', err.message));
+            return filesBot.sendMessage(chatId, `❌ Geçersiz Anahtar!\n\nGirdiğiniz anahtar bulunamadı veya süresi dolmuş.\n\n🔑 Lütfen geçerli bir anahtar girin veya yeni anahtar satın alın.`)
+                .catch(err => console.log('[Files Bot] Hata mesajı gönderilemedi:', err.message));
         }
     });
 
