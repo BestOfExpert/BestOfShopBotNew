@@ -1260,6 +1260,20 @@ bot.on("callback_query", (query) => {
     
     // === KULLANICI MENÜ NAVİGASYONU ===
     
+    // Genel callback için oturum kontrolü - admin hariç
+    // (games_menu, platform seçimleri vs. için)
+    const isUserMenuCallback = data === "games_menu" || data.startsWith("platform_") || data.startsWith("game_") || 
+                               data.startsWith("gcat_") || data.startsWith("gprod_") || data.startsWith("gperiod_");
+    
+    if (isUserMenuCallback && chatId !== ADMIN_ID) {
+        // Oturum yoksa /start yönlendir
+        const sel = userState[chatId];
+        const hasPendingOrder = Object.values(pendingOrders).some(o => o.chatId === chatId);
+        if (!sel && !hasPendingOrder) {
+            return bot.sendMessage(chatId, `⚠️ <b>Oturum zaman aşımına uğradı</b>\n\nBotu başlatmak için /start yazın.`, { parse_mode: 'HTML' });
+        }
+    }
+    
     // Ana menüye dön
     if (data === "back_main" || data === "main_menu") {
         userState[chatId] = null;
@@ -5369,6 +5383,16 @@ if (filesBot) {
         const chatId = msg.chat.id;
         const text = msg.text?.trim();
         const session = filesUserSessions.get(chatId);
+
+        // Admin değilse ve session yoksa - /start yönlendir
+        // Ama pending fcode kontrolü yap (admin'e giden mesajlar için sorun yaratmasın)
+        if (!session && chatId !== ADMIN_ID && text && !text.startsWith('/')) {
+            // Pending fcode'da bu kullanıcı var mı kontrol et
+            const hasPendingFcode = Object.values(pendingFcodes).some(f => f.chatId === chatId);
+            if (!hasPendingFcode) {
+                return filesBot.sendMessage(chatId, `⚠️ <b>Oturum bulunamadı</b>\n\nBotu başlatmak için /start yazın.`, { parse_mode: 'HTML' });
+            }
+        }
 
         // Anahtar doğrulama
         if (session && session.step === 'awaiting_key' && text && !text.startsWith('/')) {
