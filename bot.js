@@ -5299,10 +5299,9 @@ if (filesBot) {
 
         console.log(`[Files Bot] Mesaj alındı - chatId: ${chatId}, text: ${text}, session: ${session?.step || 'yok'}`);
 
-        // Admin işlemleri için - filesAdminState varsa bu handler'ı atla
-        // (Admin mesaj handler'ı ayrı olarak işleyecek)
-        if (chatId === ADMIN_ID && filesAdminState[chatId]) {
-            console.log(`[Files Bot] Admin state var, atlanıyor`);
+        // Admin için - Admin'in girdiği mesajları anahtar olarak yorumlama
+        if (chatId === ADMIN_ID) {
+            console.log(`[Files Bot] Admin mesajı, anahtar kontrolü atlanıyor`);
             return;
         }
 
@@ -5719,8 +5718,17 @@ if (filesBot) {
                 });
             }
             
-            delete filesAdminState[chatId];
-            return filesBot.sendMessage(chatId, `✅ **${productName}** açıklaması kaydedildi.`, { parse_mode: 'Markdown' });
+            filesAdminState[chatId] = { currentProduct: productName };
+            return filesBot.sendMessage(chatId, `✅ **${productName}** açıklaması kaydedildi.`, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '📁 Dosya Ekle', callback_data: 'files_add_file' }],
+                        [{ text: '📦 Ürünleri Yönet', callback_data: 'files_products' }],
+                        [{ text: '🔙 Ana Menü', callback_data: 'files_back' }],
+                    ],
+                },
+            });
         }
 
         if (state.action === 'add_file' && text.toLowerCase() === 'tamam') {
