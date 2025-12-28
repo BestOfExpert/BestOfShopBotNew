@@ -4660,25 +4660,12 @@ if (filesBot) {
 
     const filesAdminState = {};
 
-    // FILES BOT: /admin paneli
+    // FILES BOT: /admin paneli - DEVRE DIŞI (BestOfFilesBot'tan yönetiliyor)
     filesBot.onText(/\/admin/, (msg) => {
         const chatId = msg.chat.id;
         if (chatId !== ADMIN_ID) return filesBot.sendMessage(chatId, "Yetkisiz.");
-
-        const productCount = filesProductUploads.size;
-        const mappingCount = Object.keys(productMapping).length;
-        filesBot.sendMessage(chatId, `**📁 Files Bot Admin Paneli**\n\nToplam menü: ${productCount}\nEşleştirme: ${mappingCount}`, {
-            parse_mode: 'Markdown',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: '📦 Ürünleri Yönet', callback_data: 'files_products' }],
-                    [{ text: '➕ Yeni Ürün Ekle', callback_data: 'files_add_product' }],
-                    [{ text: '🔗 Ürün Eşleştir', callback_data: 'files_mapping' }],
-                    [{ text: '📱 UDID Aldırma', callback_data: 'files_udid_menu' }],
-                    [{ text: '🔑 Anahtarları Yönet', callback_data: 'files_keys' }],
-                ],
-            },
-        });
+        
+        return filesBot.sendMessage(chatId, `⚠️ **Files Bot Admin Paneli Taşındı**\n\nTüm admin işlemleri artık **@BestOfFilesBot** üzerinden yapılmaktadır.\n\nLütfen o botu kullanın.`, { parse_mode: 'Markdown' });
     });
 
     // FILES BOT: Callback handler
