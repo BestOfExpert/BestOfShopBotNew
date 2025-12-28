@@ -4538,15 +4538,20 @@ if (filesBot) {
     }
 
     function getKeyInfo(key) {
+        console.log(`[Files Bot] Anahtar aranıyor: "${key}"`);
+        console.log(`[Files Bot] Aktif anahtar sayısı: ${Object.keys(activeKeys).length}`);
         for (const orderId in activeKeys) {
             const entry = activeKeys[orderId];
+            console.log(`[Files Bot] Kontrol: orderId=${orderId}, entry.key="${entry.key}", aranan="${key}", eşit mi=${entry.key === key}`);
             if (entry.key === key && entry.expiresAt > Date.now()) {
                 if (entry.product && !entry.products) {
                     entry.products = [entry.product];
                 }
+                console.log(`[Files Bot] Anahtar BULUNDU: ${JSON.stringify(entry)}`);
                 return entry;
             }
         }
+        console.log(`[Files Bot] Anahtar BULUNAMADI`);
         return null;
     }
 
