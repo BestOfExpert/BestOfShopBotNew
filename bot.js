@@ -901,9 +901,12 @@ ${badge}
 // Shop Bot admin paneli
 bot.onText(/\/admin/, (msg) => {
     const chatId = msg.chat.id;
+    console.log(`[Shop Bot /admin] Mesaj alındı - chatId: ${chatId}`);
     if (chatId !== ADMIN_ID) {
+        console.log(`[Shop Bot /admin] Admin değil, yetkisiz`);
         return bot.sendMessage(chatId, "❌ Yetkisiz erişim.");
     }
+    console.log(`[Shop Bot /admin] Admin paneli gösteriliyor`);
     showAdminPanel(chatId);
 });
 
