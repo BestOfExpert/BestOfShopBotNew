@@ -7,26 +7,28 @@ try { require('dotenv').config(); } catch (e) {}
 
 // ============== BOT TOKEN ==============
 const shopToken = process.env.SHOP_BOT_TOKEN || process.env.BOT_TOKEN;
+console.log(`[STARTUP] SHOP_BOT_TOKEN: ${shopToken ? shopToken.substring(0, 10) + '...' : 'YOK'}`);
 if (!shopToken) {
     console.error('FATAL: SHOP_BOT_TOKEN environment variable is not set.');
     process.exit(1);
 }
 const bot = new TelegramBot(shopToken, { polling: true });
+console.log('[STARTUP] Shop Bot başlatıldı.');
 
 // ============== FILES BOT ==============
 const filesToken = process.env.FILES_BOT_TOKEN;
+console.log(`[STARTUP] FILES_BOT_TOKEN: ${filesToken ? filesToken.substring(0, 10) + '...' : 'YOK'}`);
 let filesBot = null;
 
 // ÖNEMLI: FILES_BOT_TOKEN ve SHOP_BOT_TOKEN aynı ise Files Bot başlatma
 // Çünkü aynı bot iki kere başlatılamaz ve çakışma olur
 if (filesToken && filesToken !== shopToken) {
     filesBot = new TelegramBot(filesToken, { polling: true });
-    console.log('Files bot initialized (ayrı token).');
+    console.log('[STARTUP] Files Bot başlatıldı (ayrı token).');
 } else if (filesToken && filesToken === shopToken) {
-    console.log('FILES_BOT_TOKEN ve SHOP_BOT_TOKEN aynı! Files Bot DEVRE DIŞI.');
-    console.log('Files Bot için farklı bir bot tokeni kullanın.');
+    console.log('[STARTUP] FILES_BOT_TOKEN ve SHOP_BOT_TOKEN AYNI! Files Bot DEVRE DIŞI.');
 } else {
-    console.log('FILES_BOT_TOKEN not set. Files bot disabled.');
+    console.log('[STARTUP] FILES_BOT_TOKEN ayarlanmamış. Files Bot devre dışı.');
 }
 
 const ADMIN_ID = 1447919062;
