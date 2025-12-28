@@ -4380,9 +4380,14 @@ if (filesBot) {
     // FILES BOT: /admin komutunu yakala - direkt admin panelini göster
     filesBot.onText(/\/admin/, (msg) => {
         const chatId = msg.chat.id;
-        if (chatId !== ADMIN_ID) return;
+        console.log(`[Files Bot /admin] Mesaj alındı - chatId: ${chatId}, ADMIN_ID: ${ADMIN_ID}, Eşleşme: ${chatId === ADMIN_ID}`);
         
-        console.log(`[Files Bot] /admin komutu alındı - admin paneli gösteriliyor`);
+        if (chatId !== ADMIN_ID) {
+            console.log(`[Files Bot /admin] Admin değil, çıkılıyor`);
+            return;
+        }
+        
+        console.log(`[Files Bot /admin] Admin paneli gösteriliyor`);
         
         // Admin state'i temizle
         delete filesAdminState[chatId];
