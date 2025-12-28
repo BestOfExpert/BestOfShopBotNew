@@ -5629,10 +5629,21 @@ if (filesBot) {
                 console.log(`[Files Bot] awaiting_key bloğundan çıkılıyor (return)`);
                 return;
             } else {
+                // Anahtar bulunamadı - admin ise ve filesAdminState varsa sessiz kal (admin işlemi yapıyor)
+                if (chatId === ADMIN_ID && filesAdminState[chatId]) {
+                    // Admin başka bir işlem yapıyor, anahtar hatası gösterme
+                    return;
+                }
                 console.log(`[Files Bot] Anahtar BULUNAMADI, hata mesajı gönderiliyor`);
                 filesSendAndDelete('sendMessage', chatId, '❌ Geçersiz veya süresi dolmuş anahtar.');
                 return;
             }
+        }
+
+        // Admin işlemleri için - filesAdminState varsa bu handler'ı atla
+        // (Admin mesaj handler'ı ayrı olarak işleyecek)
+        if (chatId === ADMIN_ID && filesAdminState[chatId]) {
+            return;
         }
 
         // Ürün seçimi
