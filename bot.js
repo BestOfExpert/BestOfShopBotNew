@@ -5455,7 +5455,13 @@ if (filesBot) {
                         });
                     }, 1000);
                 }
+                
+                // Ürün gönderildi, burada dur - geçersiz anahtar mesajı gönderme
+                return;
             }
+            
+            // Ürün menüde var ama dosya yok - yine de return et
+            return;
         }
         
         // Fcode gönderme butonu tıklandı - awaiting_fcode durumuna geç
