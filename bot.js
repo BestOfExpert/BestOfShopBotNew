@@ -4481,9 +4481,17 @@ if (filesBot) {
         }
 
         if (data === 'files_edit_desc') {
-            const productName = filesAdminState[chatId]?.currentProduct;
+            const state = filesAdminState[chatId];
+            const productName = state?.currentProduct;
             if (!productName) return filesBot.sendMessage(chatId, '❌ Önce bir ürün seçin.');
-            filesAdminState[chatId] = { action: 'edit_desc', currentProduct: productName };
+            
+            // isUpdate ve pendingNotification bilgilerini koru
+            filesAdminState[chatId] = { 
+                action: 'edit_desc', 
+                currentProduct: productName,
+                isUpdate: state?.isUpdate || false,
+                pendingNotification: state?.pendingNotification || false
+            };
             return filesBot.sendMessage(chatId, `📄 **${productName}** için açıklama yazın:`, { parse_mode: 'Markdown' });
         }
 
@@ -5677,6 +5685,21 @@ if (filesBot) {
             
             filesProductUploads.get(productName).description = text;
             saveFilesProducts();
+            
+            // Eğer güncelleme modundaysa butonları göster
+            if (state.isUpdate || state.pendingNotification) {
+                filesAdminState[chatId] = { currentProduct: productName, isUpdate: true, pendingNotification: true };
+                return filesBot.sendMessage(chatId, `✅ **${productName}** açıklaması kaydedildi.`, {
+                    parse_mode: 'Markdown',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: '📢 Müşterilere Bildir', callback_data: 'files_send_notification' }],
+                            [{ text: '✅ Bildirimsiz Tamamla', callback_data: 'files_back' }],
+                        ],
+                    },
+                });
+            }
+            
             delete filesAdminState[chatId];
             return filesBot.sendMessage(chatId, `✅ **${productName}** açıklaması kaydedildi.`, { parse_mode: 'Markdown' });
         }
