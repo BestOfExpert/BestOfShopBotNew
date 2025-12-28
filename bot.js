@@ -893,10 +893,10 @@ ${badge}
 bot.onText(/\/admin/, (msg) => {
     const chatId = msg.chat.id;
     
-    // Eğer FILES_BOT_TOKEN ve SHOP_BOT_TOKEN aynıysa, /admin komutunu atla
+    // Files Bot aktifse, /admin komutunu Shop Bot'tan ATLA
     // Files Bot kendi /admin handler'ı ile yanıt verecek
-    if (filesBot && filesToken === shopToken) {
-        console.log('[Shop Bot] Token aynı, /admin atlanıyor - Files Bot yanıt verecek');
+    if (filesBot) {
+        console.log('[Shop Bot] Files Bot aktif, /admin atlanıyor');
         return;
     }
     
