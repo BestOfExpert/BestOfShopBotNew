@@ -5289,14 +5289,18 @@ if (filesBot) {
         // Komutları ignore et (/, /start, /admin vs.)
         if (!text || text.startsWith('/')) return;
 
+        console.log(`[Files Bot] Mesaj alındı - chatId: ${chatId}, text: ${text}, session: ${session?.step || 'yok'}`);
+
         // Admin işlemleri için - filesAdminState varsa bu handler'ı atla
         // (Admin mesaj handler'ı ayrı olarak işleyecek)
         if (chatId === ADMIN_ID && filesAdminState[chatId]) {
+            console.log(`[Files Bot] Admin state var, atlanıyor`);
             return;
         }
 
         // Anahtar doğrulama - her zaman kontrol et (yeni anahtar girilmiş olabilir)
         const keyInfo = getKeyInfo(text);
+        console.log(`[Files Bot] keyInfo: ${keyInfo ? 'BULUNDU' : 'YOK'}`);
         if (keyInfo) {
             console.log(`[Files Bot] Anahtar BULUNDU, session validated yapılıyor`);
             const purchasedProducts = keyInfo.products || [];
