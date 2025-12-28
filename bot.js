@@ -5344,16 +5344,8 @@ if (filesBot) {
             return;
         }
 
-        // Anahtar bekleniyor ama geçersiz anahtar girildi (admin hariç)
-        // Session yoksa veya awaiting_key durumundaysa
-        if (chatId !== ADMIN_ID && (!session || session.step === 'awaiting_key')) {
-            return filesBot.sendMessage(chatId, `❌ **Geçersiz Anahtar!**\n\nGirdiğiniz anahtar bulunamadı veya süresi dolmuş.\n\n🔑 Lütfen geçerli bir anahtar girin veya @BestOfShopFiles_Bot botundan yeni anahtar satın alın.`, {
-                parse_mode: 'Markdown'
-            });
-        }
-
-        // Ürün seçimi
-        if (session && session.step === 'validated' && text && !text.startsWith('/')) {
+        // Ürün seçimi - doğrulanmış kullanıcı
+        if (session && session.step === 'validated') {
             // Süre kontrolü - süre bittiyse tüm mesajları sil ve oturumu kapat
             if (session.expiresAt && session.expiresAt < Date.now()) {
                 deleteAllUserMessages(chatId);
@@ -5455,6 +5447,13 @@ if (filesBot) {
             
             // Müşteriye bildir
             return filesBot.sendMessage(chatId, `✅ **Fcode Alındı!**\n\n📱 Fcode: \`${fcode}\`\n\n⏳ ID ve şifreniz oluşturulduktan sonra size kullanıcı bilgilerinizi atacağız.\n\n🙏 Lütfen bekleyin.`, {
+                parse_mode: 'Markdown'
+            });
+        }
+
+        // Geçersiz anahtar - hiçbir koşula uymadıysa (admin hariç)
+        if (chatId !== ADMIN_ID) {
+            return filesBot.sendMessage(chatId, `❌ **Geçersiz Anahtar!**\n\nGirdiğiniz anahtar bulunamadı veya süresi dolmuş.\n\n🔑 Lütfen geçerli bir anahtar girin veya @BestOfShopFiles_Bot botundan yeni anahtar satın alın.`, {
                 parse_mode: 'Markdown'
             });
         }
