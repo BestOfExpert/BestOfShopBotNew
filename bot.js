@@ -5577,67 +5577,55 @@ if (filesBot) {
         // Komutları ignore et (/, /start, /admin vs.)
         if (!text || text.startsWith('/')) return;
 
-        // Anahtar doğrulama - session yoksa veya awaiting_key ise
-        if (!session || session.step === 'awaiting_key') {
-            console.log(`[Files Bot] Anahtar kontrol ediliyor: ${text}`);
-            const keyInfo = getKeyInfo(text);
-            if (keyInfo) {
-                console.log(`[Files Bot] Anahtar BULUNDU, session validated yapılıyor`);
-                const purchasedProducts = keyInfo.products || [];
-                const daysLeft = Math.ceil((keyInfo.expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
-                
-                const accessibleMenus = [];
-                for (const shopProduct of purchasedProducts) {
-                    const mappedMenus = getFilesMenusForShopProduct(shopProduct);
-                    if (mappedMenus.length > 0) {
-                        mappedMenus.forEach(menu => {
-                            if (!accessibleMenus.includes(menu)) accessibleMenus.push(menu);
-                        });
-                    } else {
-                        if (!accessibleMenus.includes(shopProduct)) accessibleMenus.push(shopProduct);
-                    }
+        // Anahtar doğrulama - her zaman kontrol et (yeni anahtar girilmiş olabilir)
+        const keyInfo = getKeyInfo(text);
+        if (keyInfo) {
+            console.log(`[Files Bot] Anahtar BULUNDU, session validated yapılıyor`);
+            const purchasedProducts = keyInfo.products || [];
+            const daysLeft = Math.ceil((keyInfo.expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+            
+            const accessibleMenus = [];
+            for (const shopProduct of purchasedProducts) {
+                const mappedMenus = getFilesMenusForShopProduct(shopProduct);
+                if (mappedMenus.length > 0) {
+                    mappedMenus.forEach(menu => {
+                        if (!accessibleMenus.includes(menu)) accessibleMenus.push(menu);
+                    });
+                } else {
+                    if (!accessibleMenus.includes(shopProduct)) accessibleMenus.push(shopProduct);
                 }
-                
-                filesUserSessions.set(chatId, { 
-                    step: 'validated', 
-                    key: text, 
-                    products: purchasedProducts,
-                    accessibleMenus: accessibleMenus,
-                    expiresAt: keyInfo.expiresAt
-                });
-                
-                const keyboard = [];
-                for (let i = 0; i < accessibleMenus.length; i += 2) {
-                    const row = [accessibleMenus[i]];
-                    if (accessibleMenus[i + 1]) row.push(accessibleMenus[i + 1]);
-                    keyboard.push(row);
-                }
-                
-                const menu = {
-                    reply_markup: {
-                        keyboard,
-                        resize_keyboard: true,
-                        one_time_keyboard: false
-                    }
-                };
-                
-                const productList = accessibleMenus.map((p, i) => `${i + 1}. ${p}`).join('\n');
-                const welcomeMsg = `✅ **Anahtar Doğrulandı!**\n\n📦 **Ürünler:**\n${productList}\n\n📅 **Kalan:** ${daysLeft} gün\n\nAşağıdan ürün seçin 👇`;
-                
-                console.log(`[Files Bot] Doğrulandı mesajı gönderiliyor`);
-                filesSendAndDelete('sendMessage', chatId, welcomeMsg, { ...menu, parse_mode: 'Markdown' });
-                console.log(`[Files Bot] awaiting_key bloğundan çıkılıyor (return)`);
-                return;
-            } else {
-                // Anahtar bulunamadı - admin ise ve filesAdminState varsa sessiz kal (admin işlemi yapıyor)
-                if (chatId === ADMIN_ID && filesAdminState[chatId]) {
-                    // Admin başka bir işlem yapıyor, anahtar hatası gösterme
-                    return;
-                }
-                console.log(`[Files Bot] Anahtar BULUNAMADI, hata mesajı gönderiliyor`);
-                filesSendAndDelete('sendMessage', chatId, '❌ Geçersiz veya süresi dolmuş anahtar.');
-                return;
             }
+            
+            filesUserSessions.set(chatId, { 
+                step: 'validated', 
+                key: text, 
+                products: purchasedProducts,
+                accessibleMenus: accessibleMenus,
+                expiresAt: keyInfo.expiresAt
+            });
+            
+            const keyboard = [];
+            for (let i = 0; i < accessibleMenus.length; i += 2) {
+                const row = [accessibleMenus[i]];
+                if (accessibleMenus[i + 1]) row.push(accessibleMenus[i + 1]);
+                keyboard.push(row);
+            }
+            
+            const menu = {
+                reply_markup: {
+                    keyboard,
+                    resize_keyboard: true,
+                    one_time_keyboard: false
+                }
+            };
+            
+            const productList = accessibleMenus.map((p, i) => `${i + 1}. ${p}`).join('\n');
+            const welcomeMsg = `✅ **Anahtar Doğrulandı!**\n\n📦 **Ürünler:**\n${productList}\n\n📅 **Kalan:** ${daysLeft} gün\n\nAşağıdan ürün seçin 👇`;
+            
+            console.log(`[Files Bot] Doğrulandı mesajı gönderiliyor`);
+            filesSendAndDelete('sendMessage', chatId, welcomeMsg, { ...menu, parse_mode: 'Markdown' });
+            console.log(`[Files Bot] Anahtar bloğundan çıkılıyor (return)`);
+            return;
         }
 
         // Admin işlemleri için - filesAdminState varsa bu handler'ı atla
@@ -5661,7 +5649,7 @@ if (filesBot) {
             const accessibleMenus = session.accessibleMenus || [];
             
             if (!accessibleMenus.includes(text)) {
-                filesSendAndDelete('sendMessage', chatId, `⚠️ Bu ürüne erişim yetkiniz yok.`, { parse_mode: 'Markdown' });
+                filesSendAndDelete('sendMessage', chatId, `⚠️ **Bu ürüne erişim yetkiniz yok.**\n\nFarklı bir ürün anahtarınız varsa onu girin veya botu başlatmak için /start yazın.`, { parse_mode: 'Markdown' });
                 return;
             }
             
