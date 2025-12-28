@@ -258,6 +258,9 @@ function showMainMenu(chatId, messageId = null) {
     // Resmi Telegram Kanallarımız butonu
     buttons.push([{ text: "📢 Resmi Telegram Kanallarımız", callback_data: "channels_menu" }]);
     
+    // Sadakat Sistemi butonu
+    buttons.push([{ text: "⭐ Sadakat Sistemi", callback_data: "loyalty_info" }]);
+    
     const opts = {
         parse_mode: "Markdown",
         reply_markup: { inline_keyboard: buttons }
@@ -704,6 +707,40 @@ bot.on("callback_query", (query) => {
     if (data === "back_main") {
         userState[chatId] = null;
         return showMainMenu(chatId, messageId);
+    }
+    
+    // Sadakat Sistemi Bilgi Sayfası
+    if (data === "loyalty_info") {
+        const text = `⭐ **Sadakat Puanı Sistemi**
+
+🎁 **Nasıl Çalışır?**
+Her alışverişinizde ödediğiniz tutarın **%4'ü** kadar puan kazanırsınız!
+
+💰 **1 Puan = 1₺**
+Kazandığınız her puan 1 TL değerindedir.
+
+♾️ **Limit Yok!**
+Puanlarınız sürekli birikir, herhangi bir limit yoktur. İstediğiniz zaman kullanabilirsiniz.
+
+🆓 **Bedava Mod Alın!**
+Biriken puanlarınız mod fiyatına ulaştığında, modu tamamen **bedava** alabilirsiniz!
+
+📊 **Puanlarınızı Görün**
+/puan yazarak mevcut puan bakiyenizi ve alışveriş istatistiklerinizi görebilirsiniz.
+
+━━━━━━━━━━━━━━━━━━━━
+💡 _Örnek: 1000₺'lik alışverişte 40 puan kazanırsınız. 10 alışveriş sonra 400 puanınız olur ve 400₺ indirim yapabilirsiniz!_`;
+        
+        return bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: "🔙 Ana Menü", callback_data: "main_menu" }]
+                ]
+            }
+        }).catch(() => bot.sendMessage(chatId, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: "🔙 Ana Menü", callback_data: "main_menu" }]] }}));
     }
     
     // Resmi Telegram Kanalları menüsü
