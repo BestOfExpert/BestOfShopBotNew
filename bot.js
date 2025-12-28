@@ -735,7 +735,7 @@ function showPaymentMethods(chatId, productKey, days, messageId = null) {
     buttons.push([{ text: "💸 IBAN ile Öde", callback_data: "pay_iban" }]);
     buttons.push([{ text: "🏦 Papara ile Öde", callback_data: "pay_papara" }]);
     buttons.push([{ text: "💰 Binance (USDT) ile Öde", callback_data: "pay_binance" }]);
-    buttons.push([{ text: "🔙 Geri", callback_data: `prod_${productKey}` }]);
+    buttons.push([{ text: "🔙 Geri", callback_data: `gprod_${productKey}` }]);
     
     const opts = {
         parse_mode: "HTML",
