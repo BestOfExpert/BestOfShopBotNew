@@ -4368,6 +4368,15 @@ if (filesBot) {
 
     const filesAdminState = {};
 
+    // FILES BOT: /admin komutunu yakala - Shop Bot menüsü gelmesin
+    filesBot.onText(/\/admin/, (msg) => {
+        const chatId = msg.chat.id;
+        if (chatId === ADMIN_ID) {
+            // Admin paneli için /owner kullanılmalı
+            return filesBot.sendMessage(chatId, '📁 **Files Bot Admin Paneli**\n\nAdmin paneline erişmek için /owner yazın.', { parse_mode: 'Markdown' });
+        }
+    });
+
     // FILES BOT: /owner paneli (admin paneli)
     filesBot.onText(/\/owner/, (msg) => {
         const chatId = msg.chat.id;
@@ -5538,14 +5547,22 @@ if (filesBot) {
     // FILES BOT: Admin mesaj handler
     filesBot.on('message', (msg) => {
         if (msg.from.id !== ADMIN_ID) return;
-        if (msg.text?.startsWith('/')) return;
+        
+        const text = (msg.text || '').trim();
+        
+        // Komutları atla - kesinlikle işleme
+        if (text.startsWith('/')) return;
+        
+        // Dosya/medya mesajları atla
         if (msg.document || msg.video || msg.photo) return;
         
         const chatId = msg.chat.id;
-        const text = (msg.text || '').trim();
         const state = filesAdminState[chatId];
         
-        if (!state) return;
+        // State yoksa veya action yoksa atla
+        if (!state || !state.action) return;
+        
+        console.log(`[Files Bot Admin] Mesaj alındı - action: ${state.action}, text: ${text}`);
 
         // UDID/Fcode için ID ve Şifre girişi
         if (state.action === 'udid_enter_credentials') {
