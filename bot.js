@@ -1315,8 +1315,8 @@ bot.on("callback_query", (query) => {
     // Oyun ürünü satın al - süre seçildi
     if (data.startsWith("gbuy_")) {
         const parts = data.substring(5).split("_");
-        const prodKey = parts[0];
-        const days = parseInt(parts[1]);
+        const days = parseInt(parts.pop()); // Son eleman süre
+        const prodKey = parts.join("_"); // Geri kalanı ürün key'i
         return showPaymentMethods(chatId, prodKey, days, messageId);
     }
     
