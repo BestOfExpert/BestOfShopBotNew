@@ -5347,7 +5347,8 @@ if (filesBot) {
         }
 
         // Anahtar bekleniyor ama geçersiz anahtar girildi (admin hariç)
-        if (session && session.step === 'awaiting_key' && chatId !== ADMIN_ID) {
+        // Session yoksa veya awaiting_key durumundaysa
+        if (chatId !== ADMIN_ID && (!session || session.step === 'awaiting_key')) {
             return filesBot.sendMessage(chatId, `❌ **Geçersiz Anahtar!**\n\nGirdiğiniz anahtar bulunamadı veya süresi dolmuş.\n\n🔑 Lütfen geçerli bir anahtar girin veya @BestOfShopFiles_Bot botundan yeni anahtar satın alın.`, {
                 parse_mode: 'Markdown'
             });
