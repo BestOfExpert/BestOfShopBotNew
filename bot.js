@@ -5346,6 +5346,13 @@ if (filesBot) {
             return;
         }
 
+        // Anahtar bekleniyor ama geçersiz anahtar girildi (admin hariç)
+        if (session && session.step === 'awaiting_key' && chatId !== ADMIN_ID) {
+            return filesBot.sendMessage(chatId, `❌ **Geçersiz Anahtar!**\n\nGirdiğiniz anahtar bulunamadı veya süresi dolmuş.\n\n🔑 Lütfen geçerli bir anahtar girin veya @BestOfShopFiles_Bot botundan yeni anahtar satın alın.`, {
+                parse_mode: 'Markdown'
+            });
+        }
+
         // Ürün seçimi
         if (session && session.step === 'validated' && text && !text.startsWith('/')) {
             // Aktivite güncelle
