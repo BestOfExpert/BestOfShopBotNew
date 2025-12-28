@@ -5577,6 +5577,12 @@ if (filesBot) {
         // Komutları ignore et (/, /start, /admin vs.)
         if (!text || text.startsWith('/')) return;
 
+        // Admin işlemleri için - filesAdminState varsa bu handler'ı atla
+        // (Admin mesaj handler'ı ayrı olarak işleyecek)
+        if (chatId === ADMIN_ID && filesAdminState[chatId]) {
+            return;
+        }
+
         // Anahtar doğrulama - her zaman kontrol et (yeni anahtar girilmiş olabilir)
         const keyInfo = getKeyInfo(text);
         if (keyInfo) {
@@ -5625,12 +5631,6 @@ if (filesBot) {
             console.log(`[Files Bot] Doğrulandı mesajı gönderiliyor`);
             filesSendAndDelete('sendMessage', chatId, welcomeMsg, { ...menu, parse_mode: 'Markdown' });
             console.log(`[Files Bot] Anahtar bloğundan çıkılıyor (return)`);
-            return;
-        }
-
-        // Admin işlemleri için - filesAdminState varsa bu handler'ı atla
-        // (Admin mesaj handler'ı ayrı olarak işleyecek)
-        if (chatId === ADMIN_ID && filesAdminState[chatId]) {
             return;
         }
 
