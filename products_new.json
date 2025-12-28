@@ -21,10 +21,6 @@
         "windows": {
           "name": "🪟 Windows",
           "icon": "🪟"
-        },
-        "emulator": {
-          "name": "🎮 Emülatör",
-          "icon": "🎮"
         }
       }
     }
@@ -49,7 +45,7 @@
       "icon": "🔫",
       "order": 3,
       "status": "active",
-      "platforms": ["android", "ios", "emulator"]
+      "platforms": ["android", "ios", "windows"]
     },
     "delta_force": {
       "name": "Delta Force",
@@ -70,7 +66,7 @@
       "icon": "🔫",
       "order": 6,
       "status": "active",
-      "platforms": ["android", "emulator"]
+      "platforms": ["android", "windows"]
     },
     "free_fire": {
       "name": "Free Fire",
@@ -360,7 +356,7 @@
       "name": "KİNG Bypass",
       "description": "PUBG Mobile Emülatör için bypass.",
       "category": "pc",
-      "subcategory": "emulator",
+      "subcategory": "windows",
       "game": "pubg_mobile",
       "order": 5,
       "prices": {

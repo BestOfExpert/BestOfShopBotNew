@@ -323,20 +323,8 @@ function showPlatformMenu(chatId, messageId = null) {
 
 // Platform seçim menüsü (Windows/Emülatör) - PC için
 function showPCPlatformMenu(chatId, messageId = null) {
-    const buttons = [
-        [{ text: "🪟 Windows", callback_data: "platform_windows" }],
-        [{ text: "🎮 Emülatör", callback_data: "platform_emulator" }],
-        [{ text: "🔙 Ana Menü", callback_data: "back_main" }]
-    ];
-    
-    const opts = {
-        parse_mode: "Markdown",
-        reply_markup: { inline_keyboard: buttons }
-    };
-    
-    const text = `💻 **PC/Bilgisayar Ürünleri**
-
-🖥️ Platform türünüzü seçin:`;
+    // Direkt Windows oyunlarını göster (emülatör kaldırıldı)
+    return showGamesMenu(chatId, 'windows', messageId);
     
     if (messageId) {
         bot.editMessageText(text, { chat_id: chatId, message_id: messageId, ...opts }).catch(() => {
@@ -374,9 +362,9 @@ function showGamesMenu(chatId, platform, messageId = null) {
         }]);
     }
     
-    // PC platformları için farklı geri butonu
+    // PC platformları için farklı geri butonu (direkt ana menüye)
     const isPCPlatform = platform === 'windows' || platform === 'emulator';
-    buttons.push([{ text: "🔙 Geri", callback_data: isPCPlatform ? "pc_games_menu" : "games_menu" }]);
+    buttons.push([{ text: "🔙 Geri", callback_data: isPCPlatform ? "back_main" : "games_menu" }]);
     buttons.push([{ text: "🏠 Ana Menü", callback_data: "back_main" }]);
     
     // Platform ismini belirle
@@ -1302,10 +1290,6 @@ bot.on("callback_query", (query) => {
     // Platform seçildi - oyunları göster (PC)
     if (data === "platform_windows") {
         return showGamesMenu(chatId, 'windows', messageId);
-    }
-    
-    if (data === "platform_emulator") {
-        return showGamesMenu(chatId, 'emulator', messageId);
     }
     
     // Oyun seçildi - ürünleri göster (platform bilgisi ile)
@@ -2787,17 +2771,50 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
         const subKeys = Object.keys(cat.subcategories || {});
         const subList = subKeys.map(sk => `  └ ${cat.subcategories[sk].icon || '📦'} ${cat.subcategories[sk].name}`).join('\n') || '  (Alt kategori yok)';
         
-        return bot.sendMessage(chatId, `📁 **${cat.name}**\n\n**Alt Kategoriler:**\n${subList}`, {
+        // Alt kategori butonları
+        const subButtons = subKeys.map(sk => [{
+            text: `🗑 ${cat.subcategories[sk].icon || '📦'} ${cat.subcategories[sk].name} Sil`,
+            callback_data: `admin_del_subcat_${catKey}_${sk}`
+        }]);
+        
+        return bot.sendMessage(chatId, `📁 **${cat.name}**\n\n**Alt Kategoriler (Platformlar):**\n${subList}`, {
             parse_mode: 'Markdown',
             reply_markup: {
                 inline_keyboard: [
                     [{ text: "✏️ Adı Değiştir", callback_data: `admin_cat_rename_${catKey}` }],
                     [{ text: "🎨 İkon Değiştir", callback_data: `admin_cat_icon_${catKey}` }],
+                    [{ text: "➕ Alt Kategori Ekle", callback_data: `admin_subcat_select_${catKey}` }],
+                    ...subButtons,
                     [{ text: "🗑 Kategoriyi Sil", callback_data: `admin_cat_delete_${catKey}` }],
                     [{ text: "🔙 Geri", callback_data: "admin_edit_cat_menu" }]
                 ]
             }
         });
+    }
+    
+    // Alt kategori sil
+    if (data.startsWith("admin_del_subcat_")) {
+        const parts = data.substring(17).split("_");
+        const catKey = parts[0];
+        const subKey = parts.slice(1).join("_");
+        const prodData = loadProducts();
+        
+        // Bu alt kategorideki ürünleri kontrol et
+        const hasProducts = Object.values(prodData.products || {}).some(
+            p => p.category === catKey && p.subcategory === subKey
+        );
+        if (hasProducts) {
+            return bot.sendMessage(chatId, "❌ Bu alt kategoride ürün var! Önce ürünleri başka alt kategoriye taşıyın veya silin.", {
+                reply_markup: { inline_keyboard: [[{ text: "🔙 Geri", callback_data: `admin_cat_edit_${catKey}` }]] }
+            });
+        }
+        
+        if (prodData.categories[catKey]?.subcategories?.[subKey]) {
+            delete prodData.categories[catKey].subcategories[subKey];
+            saveProducts(prodData);
+            bot.sendMessage(chatId, "✅ Alt kategori silindi.");
+        }
+        return showAdminCategories(chatId);
     }
     
     // Kategori adını değiştir
@@ -3132,63 +3149,7 @@ Düzenlemek istediğiniz ürünü seçin:`;
     }
 }
 
-function showAdminProductEdit(chatId, productKey, messageId = null) {
-    const data = loadProducts();
-    const product = data.products[productKey];
-    if (!product) return bot.sendMessage(chatId, "Ürün bulunamadı.");
-    
-    const priceInfo = Object.entries(product.prices || {})
-        .map(([days, price]) => `${days} gün: ${price}₺`)
-        .join('\n') || 'Fiyat yok';
-    
-    // Durum ikonu
-    let statusIcon = '🟢 Aktif';
-    if (product.maintenance) statusIcon = '🔵 Bakımda';
-    else {
-        const hasStock = Object.values(product.stock || {}).some(arr => arr && arr.length > 0);
-        if (!hasStock) statusIcon = '🔴 Stok Yok';
-    }
-    
-    const text = `📦 **${product.name}**
-
-📁 Kategori: ${product.category} / ${product.subcategory}
-📊 Durum: ${statusIcon}
-🎨 İkon: ${product.icon || '📦'}
-
-📝 **Açıklama:**
-${product.description || 'Açıklama yok'}
-
-💰 **Fiyatlar:**
-${priceInfo}`;
-    
-    const opts = {
-        parse_mode: "Markdown",
-        reply_markup: {
-            inline_keyboard: [
-                [
-                    { text: "🟢 Aktif", callback_data: `admin_status_active_${productKey}` },
-                    { text: "🔵 Bakım", callback_data: `admin_status_maint_${productKey}` },
-                    { text: "🔴 Stok Yok", callback_data: `admin_status_nostock_${productKey}` }
-                ],
-                [{ text: "💰 Fiyatları Düzenle", callback_data: `admin_price_${productKey}` }],
-                [{ text: "📝 Açıklamayı Düzenle", callback_data: `admin_desc_${productKey}` }],
-                [{ text: "🎨 İkon Değiştir", callback_data: `admin_icon_${productKey}` }],
-                [{ text: "📁 Kategori Değiştir", callback_data: `admin_change_cat_${productKey}` }],
-                [{ text: "🔢 Sıra Değiştir", callback_data: `admin_order_${productKey}` }],
-                [{ text: "🗑 Ürünü Sil", callback_data: `admin_delete_${productKey}` }],
-                [{ text: "🔙 Geri", callback_data: "admin_products" }]
-            ]
-        }
-    };
-    
-    if (messageId) {
-        bot.editMessageText(text, { chat_id: chatId, message_id: messageId, ...opts }).catch(() => {
-            bot.sendMessage(chatId, text, opts);
-        });
-    } else {
-        bot.sendMessage(chatId, text, opts);
-    }
-}
+// Eski showAdminProductEdit fonksiyonu kaldırıldı - yeni versiyon satır 1150'de
 
 function showAdminDurations(chatId, messageId = null) {
     const data = loadProducts();
