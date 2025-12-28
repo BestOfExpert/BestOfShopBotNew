@@ -4121,6 +4121,7 @@ console.log('Shop Bot başlatıldı!');
 // ============================================================
 
 if (filesBot) {
+    console.log('[Files Bot] Handler\'lar kaydediliyor...');
     const FILES_DELETE_DELAY_MS = 30 * 60 * 1000; // 30 dakika sonra sil
     const filesUserSessions = new Map();
     const filesProductUploads = new Map();
@@ -4370,7 +4371,14 @@ if (filesBot) {
     // FILES BOT: /owner paneli (admin paneli)
     filesBot.onText(/\/owner/, (msg) => {
         const chatId = msg.chat.id;
-        if (chatId !== ADMIN_ID) return filesBot.sendMessage(chatId, "Yetkisiz.");
+        console.log(`[Files Bot] /owner komutu alındı - chatId: ${chatId}, ADMIN_ID: ${ADMIN_ID}`);
+        
+        if (chatId !== ADMIN_ID) {
+            console.log(`[Files Bot] Yetkisiz erişim denemesi`);
+            return filesBot.sendMessage(chatId, "Yetkisiz.");
+        }
+        
+        console.log(`[Files Bot] Admin paneli gösteriliyor`);
         
         // Admin state'i temizle (yeni menü açılıyor)
         delete filesAdminState[chatId];
