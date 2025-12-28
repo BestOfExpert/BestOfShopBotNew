@@ -16,9 +16,15 @@ const bot = new TelegramBot(shopToken, { polling: true });
 // ============== FILES BOT ==============
 const filesToken = process.env.FILES_BOT_TOKEN;
 let filesBot = null;
-if (filesToken) {
+
+// ÖNEMLI: FILES_BOT_TOKEN ve SHOP_BOT_TOKEN aynı ise Files Bot başlatma
+// Çünkü aynı bot iki kere başlatılamaz ve çakışma olur
+if (filesToken && filesToken !== shopToken) {
     filesBot = new TelegramBot(filesToken, { polling: true });
-    console.log('Files bot initialized.');
+    console.log('Files bot initialized (ayrı token).');
+} else if (filesToken && filesToken === shopToken) {
+    console.log('FILES_BOT_TOKEN ve SHOP_BOT_TOKEN aynı! Files Bot DEVRE DIŞI.');
+    console.log('Files Bot için farklı bir bot tokeni kullanın.');
 } else {
     console.log('FILES_BOT_TOKEN not set. Files bot disabled.');
 }
@@ -892,14 +898,6 @@ ${badge}
 // ============== /ADMIN KOMUTU ==============
 bot.onText(/\/admin/, (msg) => {
     const chatId = msg.chat.id;
-    
-    // Files Bot aktifse, /admin komutunu Shop Bot'tan ATLA
-    // Files Bot kendi /admin handler'ı ile yanıt verecek
-    if (filesBot) {
-        console.log('[Shop Bot] Files Bot aktif, /admin atlanıyor');
-        return;
-    }
-    
     if (chatId !== ADMIN_ID) {
         return bot.sendMessage(chatId, "❌ Yetkisiz erişim.");
     }
