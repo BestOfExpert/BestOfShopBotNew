@@ -4654,6 +4654,8 @@ if (filesBot) {
     // FILES BOT: /start
     filesBot.onText(/\/start/, (msg) => {
         const chatId = msg.chat.id;
+        // Admin state'i temizle (varsa)
+        delete filesAdminState[chatId];
         filesUserSessions.set(chatId, { step: 'awaiting_key' });
         filesSendAndDelete('sendMessage', chatId, '🔐 Lütfen ürün anahtarınızı girin:');
     });
@@ -4664,6 +4666,9 @@ if (filesBot) {
     filesBot.onText(/\/admin/, (msg) => {
         const chatId = msg.chat.id;
         if (chatId !== ADMIN_ID) return filesBot.sendMessage(chatId, "Yetkisiz.");
+        
+        // Admin state'i temizle (yeni menü açılıyor)
+        delete filesAdminState[chatId];
 
         const productCount = filesProductUploads.size;
         const mappingCount = Object.keys(productMapping).length;
