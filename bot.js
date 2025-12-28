@@ -4359,8 +4359,8 @@ if (filesBot) {
 
     const filesAdminState = {};
 
-    // FILES BOT: /admin paneli
-    filesBot.onText(/\/admin/, (msg) => {
+    // FILES BOT: /owner paneli (admin paneli)
+    filesBot.onText(/\/owner/, (msg) => {
         const chatId = msg.chat.id;
         if (chatId !== ADMIN_ID) return filesBot.sendMessage(chatId, "Yetkisiz.");
         
