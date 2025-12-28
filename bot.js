@@ -4122,6 +4122,7 @@ console.log('Shop Bot başlatıldı!');
 
 if (filesBot) {
     const FILES_DELETE_DELAY_MS = 30 * 60 * 1000; // 30 dakika sonra sil
+    const FILES_SESSION_TIMEOUT_MS = 5 * 60 * 1000; // 5 dakika inaktivite sonrası oturum kapat
     const filesUserSessions = new Map();
     const filesProductUploads = new Map();
     const FILES_PRODUCTS_FILE = path.join(__dirname, 'files_products.json');
@@ -4353,7 +4354,7 @@ if (filesBot) {
         const chatId = msg.chat.id;
         // Admin state'i temizle (varsa)
         delete filesAdminState[chatId];
-        filesUserSessions.set(chatId, { step: 'awaiting_key' });
+        filesUserSessions.set(chatId, { step: 'awaiting_key', lastActivity: Date.now() });
         filesSendAndDelete('sendMessage', chatId, '🔐 Lütfen ürün anahtarınızı girin:');
     });
 
@@ -5319,7 +5320,8 @@ if (filesBot) {
                 key: text, 
                 products: purchasedProducts,
                 accessibleMenus: accessibleMenus,
-                expiresAt: keyInfo.expiresAt
+                expiresAt: keyInfo.expiresAt,
+                lastActivity: Date.now()
             });
             
             const keyboard = [];
@@ -5346,6 +5348,10 @@ if (filesBot) {
 
         // Ürün seçimi
         if (session && session.step === 'validated' && text && !text.startsWith('/')) {
+            // Aktivite güncelle
+            session.lastActivity = Date.now();
+            filesUserSessions.set(chatId, session);
+            
             // Süre kontrolü - süre bittiyse tüm mesajları sil ve oturumu kapat
             if (session.expiresAt && session.expiresAt < Date.now()) {
                 deleteAllUserMessages(chatId);
@@ -5729,13 +5735,26 @@ if (filesBot) {
         }
     });
 
-    // Periyodik süre kontrolü - süresi dolan kullanıcıların mesajlarını sil
+    // Periyodik süre kontrolü - süresi dolan ve inaktif kullanıcıların oturumlarını kapat
     setInterval(() => {
+        const now = Date.now();
         for (const [chatId, session] of filesUserSessions.entries()) {
-            if (session.expiresAt && session.expiresAt < Date.now()) {
+            // Anahtar süresi dolmuşsa
+            if (session.expiresAt && session.expiresAt < now) {
                 deleteAllUserMessages(chatId);
                 filesUserSessions.delete(chatId);
                 filesBot.sendMessage(chatId, `⏰ **Süreniz Doldu!**\n\nÜrün anahtarınızın süresi bitmiştir. Tüm dosyalar ve mesajlar silindi.\n\n🛒 Yeni anahtar almak için @BestOfShopFiles_Bot botunu ziyaret edin.`, {
+                    parse_mode: 'Markdown',
+                    reply_markup: { remove_keyboard: true }
+                }).catch(() => {});
+                continue;
+            }
+            
+            // 5 dakika inaktivite sonrası oturum kapat
+            if (session.lastActivity && (now - session.lastActivity) > FILES_SESSION_TIMEOUT_MS) {
+                deleteAllUserMessages(chatId);
+                filesUserSessions.delete(chatId);
+                filesBot.sendMessage(chatId, `🔒 **Oturum Kapatıldı**\n\nGüvenliğiniz için 5 dakika işlem yapılmadığından oturumunuz kapatıldı.\n\n📌 Tekrar erişmek için /start yazın ve anahtarınızı girin.`, {
                     parse_mode: 'Markdown',
                     reply_markup: { remove_keyboard: true }
                 }).catch(() => {});
