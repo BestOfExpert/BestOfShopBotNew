@@ -486,16 +486,14 @@ function showGameProductDetails(chatId, prodKey, messageId = null) {
         }
     } catch (e) {}
     
-    // Süre butonları oluştur
+    // Süre butonları oluştur (stok gösterilmez - admin manuel key girer)
     const buttons = [];
     for (const dur of durations) {
         const price = product.prices?.[dur.days] || 0;
         if (price > 0) {
-            const stockCount = (product.stock?.[dur.days] || []).length;
-            const stockText = stockCount > 0 ? `(${stockCount} stok)` : '(Stok yok)';
             buttons.push([{
-                text: `⏱ ${dur.label} - ${price}₺ ${stockText}`,
-                callback_data: stockCount > 0 ? `gbuy_${prodKey}_${dur.days}` : `nostock_${prodKey}`
+                text: `⏱ ${dur.label} - ${price}₺`,
+                callback_data: `gbuy_${prodKey}_${dur.days}`
             }]);
         }
     }
