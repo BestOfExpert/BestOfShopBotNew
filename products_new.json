@@ -25,12 +25,58 @@
       }
     }
   },
+  "games": {
+    "mobile_legends": {
+      "name": "Mobile Legends",
+      "icon": "⚔️",
+      "order": 1,
+      "status": "active"
+    },
+    "8ball_pool": {
+      "name": "8 Ball Pool",
+      "icon": "🎱",
+      "order": 2,
+      "status": "active"
+    },
+    "pubg_mobile": {
+      "name": "PUBG Mobile",
+      "icon": "🔫",
+      "order": 3,
+      "status": "active"
+    },
+    "delta_force": {
+      "name": "Delta Force",
+      "icon": "🪖",
+      "order": 4,
+      "status": "active"
+    },
+    "wild_rift": {
+      "name": "Wild Rift",
+      "icon": "🎮",
+      "order": 5,
+      "status": "active"
+    },
+    "standoff2": {
+      "name": "Standoff 2",
+      "icon": "🔫",
+      "order": 6,
+      "status": "active"
+    },
+    "free_fire": {
+      "name": "Free Fire",
+      "icon": "🔥",
+      "order": 7,
+      "status": "active"
+    }
+  },
   "products": {
     "cyrax_mod": {
       "name": "Cyrax Mod",
       "description": "Mobile Legends için en gelişmiş Android mod.",
       "category": "mobile",
       "subcategory": "android",
+      "game": "mobile_legends",
+      "order": 1,
       "prices": {
         "7": 400,
         "30": 725,
@@ -49,6 +95,8 @@
       "description": "Mobile Legends için full özellikli mod. İMGUİ arayüzü ile kolay kullanım.",
       "category": "mobile",
       "subcategory": "android",
+      "game": "mobile_legends",
+      "order": 2,
       "prices": {
         "7": 400,
         "30": 750,
@@ -67,6 +115,8 @@
       "description": "Mobile Legends için temel mod.",
       "category": "mobile",
       "subcategory": "android",
+      "game": "mobile_legends",
+      "order": 3,
       "prices": {
         "7": 250,
         "30": 550,
@@ -85,6 +135,8 @@
       "description": "iOS için Mobile Legends mod. Jailbreak gerektirmez.",
       "category": "mobile",
       "subcategory": "ios",
+      "game": "mobile_legends",
+      "order": 4,
       "prices": {
         "7": 550,
         "30": 850,
@@ -103,6 +155,8 @@
       "description": "iOS için Gbox mağaza kurulumu.",
       "category": "mobile",
       "subcategory": "ios",
+      "game": "mobile_legends",
+      "order": 5,
       "prices": {
         "7": 550,
         "30": 550,
@@ -121,6 +175,8 @@
       "description": "8 Ball Pool için en iyi Android mod.",
       "category": "mobile",
       "subcategory": "android",
+      "game": "8ball_pool",
+      "order": 1,
       "prices": {
         "7": 575,
         "30": 1375,
@@ -139,6 +195,8 @@
       "description": "8 Ball Pool için PSH4X mod.",
       "category": "mobile",
       "subcategory": "android",
+      "game": "8ball_pool",
+      "order": 2,
       "prices": {
         "7": 450,
         "30": 900,
@@ -157,6 +215,8 @@
       "description": "8 Ball Pool için iPhone/iOS mod.",
       "category": "mobile",
       "subcategory": "ios",
+      "game": "8ball_pool",
+      "order": 3,
       "prices": {
         "7": 500,
         "30": 900,
@@ -175,6 +235,8 @@
       "description": "PUBG Mobile Android için rootsuz mod.",
       "category": "mobile",
       "subcategory": "android",
+      "game": "pubg_mobile",
+      "order": 1,
       "prices": {
         "7": 500,
         "30": 875,
@@ -193,6 +255,8 @@
       "description": "PUBG Mobile rootlu cihazlar için mod.",
       "category": "mobile",
       "subcategory": "android",
+      "game": "pubg_mobile",
+      "order": 2,
       "prices": {
         "7": 600,
         "30": 1200,
@@ -211,6 +275,8 @@
       "description": "PUBG Mobile rootlu cihazlar için kernel mod.",
       "category": "mobile",
       "subcategory": "android",
+      "game": "pubg_mobile",
+      "order": 3,
       "prices": {
         "7": 625,
         "30": 1250,
@@ -229,6 +295,8 @@
       "description": "PUBG Mobile iOS için No JB mod.",
       "category": "mobile",
       "subcategory": "ios",
+      "game": "pubg_mobile",
+      "order": 4,
       "prices": {
         "7": 450,
         "30": 850,
@@ -247,6 +315,8 @@
       "description": "PUBG Mobile Emülatör için bypass.",
       "category": "pc",
       "subcategory": "emulator",
+      "game": "pubg_mobile",
+      "order": 5,
       "prices": {
         "7": 600,
         "30": 1200,
@@ -265,6 +335,8 @@
       "description": "Wild Rift Android mod.",
       "category": "mobile",
       "subcategory": "android",
+      "game": "wild_rift",
+      "order": 1,
       "prices": {
         "7": 650,
         "30": 1200,
@@ -283,6 +355,8 @@
       "description": "Wild Rift iOS mod.",
       "category": "mobile",
       "subcategory": "ios",
+      "game": "wild_rift",
+      "order": 2,
       "prices": {
         "7": 650,
         "30": 1200,
@@ -301,6 +375,8 @@
       "description": "Standoff 2 rootlu Android ve emülatör mod.",
       "category": "mobile",
       "subcategory": "android",
+      "game": "standoff2",
+      "order": 1,
       "prices": {
         "7": 400,
         "30": 750,
@@ -319,6 +395,8 @@
       "description": "iOS için Gbox mağaza.",
       "category": "mobile",
       "subcategory": "ios",
+      "game": "mobile_legends",
+      "order": 6,
       "prices": {
         "7": 550,
         "30": 550,
@@ -337,6 +415,8 @@
       "description": "Delta Force iOS mod.",
       "category": "mobile",
       "subcategory": "ios",
+      "game": "delta_force",
+      "order": 1,
       "prices": {
         "7": 600,
         "30": 1100,
@@ -355,6 +435,8 @@
       "description": "Delta Force Android mod.",
       "category": "mobile",
       "subcategory": "android",
+      "game": "delta_force",
+      "order": 2,
       "prices": {
         "7": 550,
         "30": 1000,
