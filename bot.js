@@ -261,6 +261,9 @@ function showMainMenu(chatId, messageId = null) {
     // Sadakat Sistemi butonu
     buttons.push([{ text: "⭐ Sadakat Sistemi", callback_data: "loyalty_info" }]);
     
+    // Politikalarımız ve Kurallarımız butonu
+    buttons.push([{ text: "📜 Politikalarımız ve Kurallarımız", callback_data: "policies_rules" }]);
+    
     const opts = {
         parse_mode: "Markdown",
         reply_markup: { inline_keyboard: buttons }
@@ -723,13 +726,13 @@ Kazandığınız her puan 1 TL değerindedir.
 Puanlarınız sürekli birikir, herhangi bir limit yoktur. İstediğiniz zaman kullanabilirsiniz.
 
 🆓 **Bedava Mod Alın!**
-Biriken puanlarınız mod fiyatına ulaştığında, modu tamamen **bedava** alabilirsiniz!
+Biriken puanlarınız mod fiyatına ulaştığında, modu tamamen **bedava** alabilirsiniz Veya Puanınız Kadar Fiyattan İndirim Alabilirsiniz!
 
 📊 **Puanlarınızı Görün**
 /puan yazarak mevcut puan bakiyenizi ve alışveriş istatistiklerinizi görebilirsiniz.
 
 ━━━━━━━━━━━━━━━━━━━━
-💡 _Örnek: 1000₺'lik alışverişte 40 puan kazanırsınız. 10 alışveriş sonra 400 puanınız olur ve 400₺ indirim yapabilirsiniz!_`;
+💡 _Örnek: 1000₺'lik alışverişte 40 puan kazanırsınız. 10 alışveriş sonra 400 puanınız olur ve 400₺ indirim yapabilirsiniz! İsterseniz 30 puanınız var 500 tl lık urun aldıgınızda puanı kullanıp 470 tl odeyerek alabılırsınız her alısverıste bu puan ustune eklenerek bırıkır kullandıgınızda sıfırlanır_`;
         
         return bot.editMessageText(text, {
             chat_id: chatId,
@@ -741,6 +744,50 @@ Biriken puanlarınız mod fiyatına ulaştığında, modu tamamen **bedava** ala
                 ]
             }
         }).catch(() => bot.sendMessage(chatId, text, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: "🔙 Ana Menü", callback_data: "main_menu" }]] }}));
+    }
+    
+    // Politikalarımız ve Kurallarımız Sayfası
+    if (data === "policies_rules") {
+        const text = `📜 <b>POLİTİKALARIMIZ VE KURALLARIMIZ</b>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>1.</b> Sistemimiz Mod ve Yardımcı Eklenti için kurulmuştur.
+
+<b>2.</b> Aldığınız anahtar üretildikten sonra <b>değişim ve para iadesi söz konusu değildir.</b>
+
+<b>3.</b> Hesap yasağı durumunda <b>değişim veya iade söz konusu değildir.</b>
+
+<b>4.</b> Mod bakım zamanlarında güncelleme süresince geçen süreniz anahtarınıza eklenir.
+
+<b>5.</b> Lisans anahtarı ve dosya paylaşımı <b>kesinlikle yasaktır!</b> Satın alan kişi yalnızca kendi kullanabilir. İkinci şahıslara dosya veya lisans anahtarı paylaşmak yasaktır.
+
+<b>6.</b> Tüm modlar tek 1 cihaz için satın alınır ve kullanılır. Başka cihazda üyelik süreniz devam etse bile kullanılamamaktadır.
+
+<b>7.</b> Tüm modların bilgi sayfalarında hangi işletim sisteminde çalıştığı yazmaktadır. Sistem uyumluluğunu kontrol etmek kullanıcıya aittir.
+
+<b>8.</b> Android rootlu veya rootsuz mod alırken lütfen dikkat ediniz. Cihazınızın gerekli gereksinimleri karşıladığından emin olunuz. Sorumluluk size aittir.
+
+<b>9.</b> Oyunlarda yasaklı ve riskli ürün aldığınızın farkında olarak alışveriş yapın. Tüm sorumluluk alan kişiye aittir.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️⚠️⚠️ <b>ÖNEMLİ</b> ⚠️⚠️⚠️
+
+🔴 <b>10. SATIN ALIM YAPAN KİŞİ BÜTÜN BU MADDELERİ KABUL ETMİŞ VE ONAYLAMIŞ SAYILIR!</b> 🔴
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+        
+        return bot.editMessageText(text, {
+            chat_id: chatId,
+            message_id: messageId,
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: "🔙 Ana Menü", callback_data: "main_menu" }]
+                ]
+            }
+        }).catch(() => bot.sendMessage(chatId, text, { parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: "🔙 Ana Menü", callback_data: "main_menu" }]] }}));
     }
     
     // Resmi Telegram Kanalları menüsü
