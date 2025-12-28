@@ -5572,13 +5572,17 @@ if (filesBot) {
         const text = msg.text?.trim();
         const session = filesUserSessions.get(chatId);
 
+        console.log(`[Files Bot MSG] chatId=${chatId}, text="${text}", session.step=${session?.step}`);
+
         // Komutları ignore et (/, /start, /admin vs.)
         if (!text || text.startsWith('/')) return;
 
         // Anahtar doğrulama
         if (session && session.step === 'awaiting_key') {
+            console.log(`[Files Bot] awaiting_key - anahtar kontrol ediliyor: ${text}`);
             const keyInfo = getKeyInfo(text);
             if (keyInfo) {
+                console.log(`[Files Bot] Anahtar BULUNDU, session validated yapılıyor`);
                 const purchasedProducts = keyInfo.products || [];
                 const daysLeft = Math.ceil((keyInfo.expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
                 
@@ -5620,11 +5624,15 @@ if (filesBot) {
                 const productList = accessibleMenus.map((p, i) => `${i + 1}. ${p}`).join('\n');
                 const welcomeMsg = `✅ **Anahtar Doğrulandı!**\n\n📦 **Ürünler:**\n${productList}\n\n📅 **Kalan:** ${daysLeft} gün\n\nAşağıdan ürün seçin 👇`;
                 
+                console.log(`[Files Bot] Doğrulandı mesajı gönderiliyor`);
                 filesSendAndDelete('sendMessage', chatId, welcomeMsg, { ...menu, parse_mode: 'Markdown' });
+                console.log(`[Files Bot] awaiting_key bloğundan çıkılıyor (return)`);
+                return;
             } else {
+                console.log(`[Files Bot] Anahtar BULUNAMADI, hata mesajı gönderiliyor`);
                 filesSendAndDelete('sendMessage', chatId, '❌ Geçersiz veya süresi dolmuş anahtar.');
+                return;
             }
-            return;
         }
 
         // Ürün seçimi
