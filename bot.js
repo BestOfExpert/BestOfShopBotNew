@@ -4682,11 +4682,15 @@ if (filesBot) {
     });
 
     // FILES BOT: Callback handler
-    filesBot.on('callback_query', (query) => {
+    filesBot.on('callback_query', async (query) => {
         const chatId = query.from.id;
         const data = query.data;
-        try { filesBot.answerCallbackQuery(query.id).catch(()=>{}); } catch (e) {}
+        
+        try {
+            await filesBot.answerCallbackQuery(query.id).catch(()=>{});
+        } catch (e) {}
 
+        try {
         // ============== KULLANICI CALLBACK'LERİ (Admin olmayan) ==============
         
         // Fcode gönderme butonu tıklandı
@@ -5559,6 +5563,10 @@ if (filesBot) {
                 parse_mode: 'Markdown',
                 reply_markup: { inline_keyboard: [[{ text: '🔙 Geri', callback_data: 'files_mapping' }]] }
             });
+        }
+        
+        } catch (error) {
+            console.error('Files Bot callback error:', error.message);
         }
     });
 
