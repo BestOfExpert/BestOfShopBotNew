@@ -1257,20 +1257,8 @@ bot.on("callback_query", (query) => {
     bot.answerCallbackQuery(query.id).catch(() => {});
     
     // === KULLANICI MENÜ NAVİGASYONU ===
-    
-    // Genel callback için oturum kontrolü - admin hariç
-    // (games_menu, platform seçimleri vs. için)
-    const isUserMenuCallback = data === "games_menu" || data.startsWith("platform_") || data.startsWith("game_") || 
-                               data.startsWith("gcat_") || data.startsWith("gprod_") || data.startsWith("gperiod_");
-    
-    if (isUserMenuCallback && chatId !== ADMIN_ID) {
-        // Oturum yoksa /start yönlendir
-        const sel = userState[chatId];
-        const hasPendingOrder = Object.values(pendingOrders).some(o => o.chatId === chatId);
-        if (!sel && !hasPendingOrder) {
-            return bot.sendMessage(chatId, `⚠️ <b>Oturum zaman aşımına uğradı</b>\n\nBotu başlatmak için /start yazın.`, { parse_mode: 'HTML' });
-        }
-    }
+    // Menü navigasyonu için session kontrolü kaldırıldı - herkes menülere erişebilir
+    // Session sadece ödeme işlemleri için gerekli
     
     // Ana menüye dön
     if (data === "back_main" || data === "main_menu") {
