@@ -249,11 +249,16 @@ function showMainMenu(chatId, messageId = null) {
     const buttons = [];
     for (const catKey in categories) {
         const cat = categories[catKey];
-        // Mobil kategorisi için oyun menüsüne yönlendir
+        // Mobil ve PC kategorisi için oyun menüsüne yönlendir
         if (catKey === 'mobile') {
             buttons.push([{ 
                 text: cat.name, 
                 callback_data: `games_menu` 
+            }]);
+        } else if (catKey === 'pc') {
+            buttons.push([{ 
+                text: cat.name, 
+                callback_data: `pc_games_menu` 
             }]);
         } else {
             buttons.push([{ 
@@ -290,26 +295,13 @@ Lütfen ürün kategorisini seçin:`;
     }
 }
 
-// Oyun listesi menüsü (Mobile Mod için)
-function showGamesMenu(chatId, messageId = null) {
-    const data = loadProducts();
-    const games = data.games || {};
-    
-    // Oyunları sırala ve aktif olanları filtrele
-    const sortedGames = Object.entries(games)
-        .filter(([_, game]) => game.status === 'active')
-        .sort((a, b) => (a[1].order || 99) - (b[1].order || 99));
-    
-    const buttons = [];
-    for (const [gameKey, game] of sortedGames) {
-        const statusIcon = game.status === 'maintenance' ? '🔵' : '🟢';
-        buttons.push([{ 
-            text: `${game.icon || '🎮'} ${game.name}`, 
-            callback_data: `game_${gameKey}` 
-        }]);
-    }
-    
-    buttons.push([{ text: "🔙 Ana Menü", callback_data: "back_main" }]);
+// Platform seçim menüsü (Android/iOS) - Mobil için
+function showPlatformMenu(chatId, messageId = null) {
+    const buttons = [
+        [{ text: "🤖 Android", callback_data: "platform_android" }],
+        [{ text: "🍎 Apple/iOS", callback_data: "platform_ios" }],
+        [{ text: "🔙 Ana Menü", callback_data: "back_main" }]
+    ];
     
     const opts = {
         parse_mode: "Markdown",
@@ -317,6 +309,93 @@ function showGamesMenu(chatId, messageId = null) {
     };
     
     const text = `📱 **Mobil Mod Ürünleri**
+
+📲 Cihazınızın işletim sistemini seçin:`;
+    
+    if (messageId) {
+        bot.editMessageText(text, { chat_id: chatId, message_id: messageId, ...opts }).catch(() => {
+            bot.sendMessage(chatId, text, opts);
+        });
+    } else {
+        bot.sendMessage(chatId, text, opts);
+    }
+}
+
+// Platform seçim menüsü (Windows/Emülatör) - PC için
+function showPCPlatformMenu(chatId, messageId = null) {
+    const buttons = [
+        [{ text: "🪟 Windows", callback_data: "platform_windows" }],
+        [{ text: "🎮 Emülatör", callback_data: "platform_emulator" }],
+        [{ text: "🔙 Ana Menü", callback_data: "back_main" }]
+    ];
+    
+    const opts = {
+        parse_mode: "Markdown",
+        reply_markup: { inline_keyboard: buttons }
+    };
+    
+    const text = `💻 **PC/Bilgisayar Ürünleri**
+
+🖥️ Platform türünüzü seçin:`;
+    
+    if (messageId) {
+        bot.editMessageText(text, { chat_id: chatId, message_id: messageId, ...opts }).catch(() => {
+            bot.sendMessage(chatId, text, opts);
+        });
+    } else {
+        bot.sendMessage(chatId, text, opts);
+    }
+}
+
+// Oyun listesi menüsü (Platform filtrelemeli)
+function showGamesMenu(chatId, platform, messageId = null) {
+    const data = loadProducts();
+    const games = data.games || {};
+    const products = data.products || {};
+    
+    // Bu platformda ürünü olan oyunları bul
+    const gamesWithProducts = new Set();
+    for (const [prodKey, prod] of Object.entries(products)) {
+        if (prod.subcategory === platform && prod.game) {
+            gamesWithProducts.add(prod.game);
+        }
+    }
+    
+    // Oyunları sırala ve filtrele
+    const sortedGames = Object.entries(games)
+        .filter(([gameKey, game]) => game.status === 'active' && gamesWithProducts.has(gameKey))
+        .sort((a, b) => (a[1].order || 99) - (b[1].order || 99));
+    
+    const buttons = [];
+    for (const [gameKey, game] of sortedGames) {
+        buttons.push([{ 
+            text: `${game.icon || '🎮'} ${game.name}`, 
+            callback_data: `game_${platform}_${gameKey}` 
+        }]);
+    }
+    
+    // PC platformları için farklı geri butonu
+    const isPCPlatform = platform === 'windows' || platform === 'emulator';
+    buttons.push([{ text: "🔙 Geri", callback_data: isPCPlatform ? "pc_games_menu" : "games_menu" }]);
+    buttons.push([{ text: "🏠 Ana Menü", callback_data: "back_main" }]);
+    
+    // Platform ismini belirle
+    let platformName;
+    switch (platform) {
+        case 'android': platformName = '🤖 Android'; break;
+        case 'ios': platformName = '🍎 Apple/iOS'; break;
+        case 'windows': platformName = '🪟 Windows'; break;
+        case 'emulator': platformName = '🎮 Emülatör'; break;
+        default: platformName = platform;
+    }
+    
+    const opts = {
+        parse_mode: "Markdown",
+        reply_markup: { inline_keyboard: buttons }
+    };
+    
+    const categoryIcon = isPCPlatform ? '💻' : '📱';
+    const text = `${categoryIcon} **${platformName} Oyunları**
 
 🎮 Lütfen bir oyun seçin:`;
     
@@ -329,18 +408,18 @@ function showGamesMenu(chatId, messageId = null) {
     }
 }
 
-// Oyuna ait ürünleri göster
-function showGameProducts(chatId, gameKey, messageId = null) {
+// Oyuna ait ürünleri göster (platform filtrelemeli)
+function showGameProducts(chatId, gameKey, platform, messageId = null) {
     const data = loadProducts();
     const games = data.games || {};
     const products = data.products || {};
     
     const game = games[gameKey];
-    if (!game) return showGamesMenu(chatId, messageId);
+    if (!game) return showGamesMenu(chatId, platform, messageId);
     
-    // Bu oyuna ait ürünleri filtrele ve sırala
+    // Bu oyuna ve platforma ait ürünleri filtrele ve sırala
     const gameProducts = Object.entries(products)
-        .filter(([_, prod]) => prod.game === gameKey)
+        .filter(([_, prod]) => prod.game === gameKey && prod.subcategory === platform)
         .sort((a, b) => (a[1].order || 99) - (b[1].order || 99));
     
     const buttons = [];
@@ -348,31 +427,40 @@ function showGameProducts(chatId, gameKey, messageId = null) {
         // Bakımda mı kontrol et
         const isMaintenance = prod.maintenance === true;
         const statusIcon = isMaintenance ? '🔵' : '🟢';
-        const platform = prod.subcategory === 'android' ? '🤖' : prod.subcategory === 'ios' ? '🍎' : '💻';
         
         // En düşük fiyatı bul
         const prices = prod.prices || {};
         const minPrice = Math.min(...Object.values(prices).filter(p => p > 0)) || 0;
         
         const buttonText = isMaintenance 
-            ? `${statusIcon} ${prod.icon || ''} ${prod.name} ${platform} - BAKIMDA`
-            : `${statusIcon} ${prod.icon || ''} ${prod.name} ${platform} - ${minPrice}₺'den`;
+            ? `${statusIcon} ${prod.icon || ''} ${prod.name} - BAKIMDA`
+            : `${statusIcon} ${prod.icon || ''} ${prod.name} - ${minPrice}₺'den`;
         
         buttons.push([{ 
             text: buttonText, 
-            callback_data: isMaintenance ? `maintenance_${prodKey}` : `gprod_${prodKey}` 
+            callback_data: isMaintenance ? `maintenance_${prodKey}` : `gprod_${platform}_${prodKey}` 
         }]);
     }
     
-    buttons.push([{ text: "🔙 Oyunlar", callback_data: "games_menu" }]);
+    buttons.push([{ text: "🔙 Oyunlar", callback_data: `platform_${platform}` }]);
     buttons.push([{ text: "🏠 Ana Menü", callback_data: "back_main" }]);
+    
+    // Platform ismini belirle
+    let platformName;
+    switch (platform) {
+        case 'android': platformName = '🤖 Android'; break;
+        case 'ios': platformName = '🍎 iOS'; break;
+        case 'windows': platformName = '🪟 Windows'; break;
+        case 'emulator': platformName = '🎮 Emülatör'; break;
+        default: platformName = platform;
+    }
     
     const opts = {
         parse_mode: "Markdown",
         reply_markup: { inline_keyboard: buttons }
     };
     
-    const text = `${game.icon || '🎮'} **${game.name} Modları**
+    const text = `${game.icon || '🎮'} **${game.name} - ${platformName}**
 
 🟢 Aktif  🔵 Bakımda
 
@@ -395,10 +483,11 @@ function showGameProductDetails(chatId, prodKey, messageId = null) {
     const durations = data.settings?.durations || [];
     
     const product = products[prodKey];
-    if (!product) return showGamesMenu(chatId, messageId);
+    if (!product) return showPlatformMenu(chatId, messageId);
     
     const game = games[product.game] || {};
-    const platform = product.subcategory === 'android' ? '🤖 Android' : product.subcategory === 'ios' ? '🍎 iOS' : '💻 PC';
+    const platformText = product.subcategory === 'android' ? '🤖 Android' : product.subcategory === 'ios' ? '🍎 iOS' : '💻 PC';
+    const platformKey = product.subcategory || 'android';
     
     // Açıklama dosyasını oku
     let description = product.description || '';
@@ -423,12 +512,13 @@ function showGameProductDetails(chatId, prodKey, messageId = null) {
         }
     }
     
-    buttons.push([{ text: "🔙 Geri", callback_data: `game_${product.game}` }]);
+    // Geri butonu: oyuna geri dön (platform bilgisi ile)
+    buttons.push([{ text: "🔙 Geri", callback_data: `game_${platformKey}_${product.game}` }]);
     buttons.push([{ text: "🏠 Ana Menü", callback_data: "back_main" }]);
     
     const text = `${product.icon || '🎮'} **${product.name}**
 
-📱 **Platform:** ${platform}
+📱 **Platform:** ${platformText}
 🎮 **Oyun:** ${game.name || 'Bilinmiyor'}
 
 📝 **Açıklama:**
@@ -914,14 +1004,21 @@ function showAdminGameEdit(chatId, gameKey, messageId = null) {
     const statusIcon = game.status === 'maintenance' ? '🔵 Bakımda' : '🟢 Aktif';
     const statusText = game.status === 'maintenance' ? 'Aktif Yap' : 'Bakıma Al';
     
-    // Bu oyuna ait ürün sayısı
-    const productCount = Object.values(data.products || {}).filter(p => p.game === gameKey).length;
+    // Bu oyuna ait ürün sayısı ve platform dağılımı
+    const gameProducts = Object.values(data.products || {}).filter(p => p.game === gameKey);
+    const productCount = gameProducts.length;
+    const platformCounts = {};
+    gameProducts.forEach(p => {
+        platformCounts[p.subcategory] = (platformCounts[p.subcategory] || 0) + 1;
+    });
+    const platformText = Object.entries(platformCounts).map(([k, v]) => `${k}: ${v}`).join(', ') || 'Yok';
     
     let text = `🎮 <b>Oyun Düzenle</b>\n\n`;
     text += `📛 <b>Ad:</b> ${game.name}\n`;
     text += `🎨 <b>İkon:</b> ${game.icon || '🎮'}\n`;
     text += `📊 <b>Durum:</b> ${statusIcon}\n`;
     text += `📦 <b>Ürün Sayısı:</b> ${productCount}\n`;
+    text += `📱 <b>Platformlar:</b> ${platformText}\n`;
     text += `🔢 <b>Sıra:</b> ${game.order || 0}`;
     
     const buttons = [
@@ -929,6 +1026,7 @@ function showAdminGameEdit(chatId, gameKey, messageId = null) {
         [{ text: "🎨 İkon Değiştir", callback_data: `admin_game_icon_${gameKey}` }],
         [{ text: `📊 ${statusText}`, callback_data: `admin_game_status_${gameKey}` }],
         [{ text: "📦 Ürünleri Yönet", callback_data: `admin_game_products_${gameKey}` }],
+        [{ text: "➕ Bu Oyuna Ürün Ekle", callback_data: `admin_add_gprod_${gameKey}` }],
         [
             { text: "⬆️ Yukarı", callback_data: `admin_game_up_${gameKey}` },
             { text: "⬇️ Aşağı", callback_data: `admin_game_down_${gameKey}` }
@@ -1058,32 +1156,99 @@ function showAdminProductEdit(chatId, prodKey, messageId = null) {
     const game = data.games?.[product.game] || {};
     const statusIcon = product.maintenance ? '🔵 Bakımda' : '🟢 Aktif';
     const statusText = product.maintenance ? 'Aktif Yap' : 'Bakıma Al';
-    const platform = product.subcategory === 'android' ? '🤖 Android' : product.subcategory === 'ios' ? '🍎 iOS' : '💻 PC';
+    
+    // Platform ismini belirle
+    let platformName;
+    switch (product.subcategory) {
+        case 'android': platformName = '🤖 Android'; break;
+        case 'ios': platformName = '🍎 iOS'; break;
+        case 'windows': platformName = '🪟 Windows'; break;
+        case 'emulator': platformName = '🎮 Emülatör'; break;
+        default: platformName = product.subcategory || 'Bilinmiyor';
+    }
     
     // Fiyatlar ve stoklar
     const prices = Object.entries(product.prices || {}).map(([d, p]) => `${d} gün: ${p}₺`).join('\n');
     const stocks = Object.entries(product.stock || {}).map(([d, s]) => `${d} gün: ${s.length} adet`).join('\n');
+    
+    // Açıklama
+    let description = product.description || 'Açıklama yok';
+    try {
+        const descFile = path.join(__dirname, 'descriptions', `${product.name}.txt`);
+        if (fs.existsSync(descFile)) {
+            description = fs.readFileSync(descFile, 'utf-8').trim().substring(0, 100) + '...';
+        }
+    } catch (e) {}
     
     let text = `📦 <b>Ürün Düzenle</b>\n\n`;
     text += `📛 <b>Ad:</b> ${product.name}\n`;
     text += `🎨 <b>İkon:</b> ${product.icon || '📦'}\n`;
     text += `📊 <b>Durum:</b> ${statusIcon}\n`;
     text += `🎮 <b>Oyun:</b> ${game.name || 'Bilinmiyor'}\n`;
-    text += `📱 <b>Platform:</b> ${platform}\n`;
+    text += `📱 <b>Platform:</b> ${platformName}\n`;
     text += `🔢 <b>Sıra:</b> ${product.order || 0}\n\n`;
-    text += `💰 <b>Fiyatlar:</b>\n${prices}\n\n`;
-    text += `📦 <b>Stok:</b>\n${stocks}`;
+    text += `💰 <b>Fiyatlar:</b>\n${prices || 'Fiyat yok'}\n\n`;
+    text += `📦 <b>Stok:</b>\n${stocks || 'Stok yok'}\n\n`;
+    text += `📝 <b>Açıklama:</b> ${description}`;
     
     const buttons = [
         [{ text: `📊 ${statusText}`, callback_data: `admin_prod_maint_${prodKey}` }],
+        [{ text: "📛 Ad Değiştir", callback_data: `admin_prod_name_${prodKey}` }],
         [{ text: "💰 Fiyat Düzenle", callback_data: `admin_prod_price_${prodKey}` }],
+        [{ text: "📝 Açıklama Düzenle", callback_data: `admin_prod_desc_${prodKey}` }],
+        [{ text: "📦 Stok Yönet", callback_data: `admin_prod_stock_${prodKey}` }],
         [{ text: "🎨 İkon Değiştir", callback_data: `admin_prod_icon_${prodKey}` }],
+        [{ text: "🎮 Oyun Değiştir", callback_data: `admin_prod_game_${prodKey}` }],
+        [{ text: "📱 Platform Değiştir", callback_data: `admin_prod_platform_${prodKey}` }],
         [
             { text: "⬆️ Yukarı", callback_data: `admin_prod_up_${prodKey}` },
             { text: "⬇️ Aşağı", callback_data: `admin_prod_down_${prodKey}` }
         ],
+        [{ text: "🗑 Ürünü Sil", callback_data: `admin_prod_delete_${prodKey}` }],
         [{ text: "🔙 Geri", callback_data: `admin_game_products_${product.game}` }]
     ];
+    
+    const opts = {
+        parse_mode: "HTML",
+        reply_markup: { inline_keyboard: buttons }
+    };
+    
+    if (messageId) {
+        bot.editMessageText(text, { chat_id: chatId, message_id: messageId, ...opts }).catch(() => {
+            bot.sendMessage(chatId, text, opts);
+        });
+    } else {
+        bot.sendMessage(chatId, text, opts);
+    }
+}
+
+// Stok yönetim menüsü
+function showAdminStockMenu(chatId, prodKey, messageId = null) {
+    const data = loadProducts();
+    const product = data.products?.[prodKey];
+    const durations = data.settings?.durations || [];
+    
+    if (!product) return showAdminGames(chatId, messageId);
+    
+    let text = `📦 <b>Stok Yönetimi</b>\n\n`;
+    text += `📦 <b>Ürün:</b> ${product.name}\n\n`;
+    text += `📊 <b>Mevcut Stoklar:</b>\n`;
+    
+    for (const dur of durations) {
+        const stockCount = (product.stock?.[dur.days] || []).length;
+        text += `⏱ ${dur.label}: ${stockCount} adet\n`;
+    }
+    
+    const buttons = [];
+    for (const dur of durations) {
+        const stockCount = (product.stock?.[dur.days] || []).length;
+        buttons.push([
+            { text: `➕ ${dur.label} Ekle`, callback_data: `admin_stock_add_${prodKey}_${dur.days}` },
+            { text: `📋 Listele (${stockCount})`, callback_data: `admin_stock_list_${prodKey}_${dur.days}` }
+        ]);
+    }
+    
+    buttons.push([{ text: "🔙 Geri", callback_data: `admin_edit_gprod_${prodKey}` }]);
     
     const opts = {
         parse_mode: "HTML",
@@ -1115,15 +1280,40 @@ bot.on("callback_query", (query) => {
         return showMainMenu(chatId, messageId);
     }
     
-    // Oyunlar menüsü
+    // Platform seçim menüsü (Mobile Mod'dan sonra)
     if (data === "games_menu") {
-        return showGamesMenu(chatId, messageId);
+        return showPlatformMenu(chatId, messageId);
     }
     
-    // Oyun seçildi - ürünleri göster
+    // PC Platform seçim menüsü
+    if (data === "pc_games_menu") {
+        return showPCPlatformMenu(chatId, messageId);
+    }
+    
+    // Platform seçildi - oyunları göster (Mobil)
+    if (data === "platform_android") {
+        return showGamesMenu(chatId, 'android', messageId);
+    }
+    
+    if (data === "platform_ios") {
+        return showGamesMenu(chatId, 'ios', messageId);
+    }
+    
+    // Platform seçildi - oyunları göster (PC)
+    if (data === "platform_windows") {
+        return showGamesMenu(chatId, 'windows', messageId);
+    }
+    
+    if (data === "platform_emulator") {
+        return showGamesMenu(chatId, 'emulator', messageId);
+    }
+    
+    // Oyun seçildi - ürünleri göster (platform bilgisi ile)
     if (data.startsWith("game_")) {
-        const gameKey = data.substring(5);
-        return showGameProducts(chatId, gameKey, messageId);
+        const parts = data.substring(5).split("_");
+        const platform = parts[0]; // android, ios, windows veya emulator
+        const gameKey = parts.slice(1).join("_"); // oyun key'i
+        return showGameProducts(chatId, gameKey, platform, messageId);
     }
     
     // Bakımdaki ürüne tıklandı
@@ -1131,9 +1321,12 @@ bot.on("callback_query", (query) => {
         return bot.answerCallbackQuery(query.id, { text: "🔵 Bu ürün şu anda bakımdadır. Lütfen daha sonra tekrar deneyin.", show_alert: true });
     }
     
-    // Oyun ürünü seçildi
+    // Oyun ürünü seçildi (platform bilgisi ile)
     if (data.startsWith("gprod_")) {
-        const prodKey = data.substring(6);
+        const parts = data.substring(6).split("_");
+        const platform = parts[0]; // android veya ios
+        const prodKey = parts.slice(1).join("_"); // ürün key'i
+        userState[chatId] = { ...userState[chatId], platform };
         return showGameProductDetails(chatId, prodKey, messageId);
     }
     
@@ -1585,8 +1778,267 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
         adminState[chatId] = { action: 'edit_prod_icon', prodKey };
         return bot.sendMessage(chatId, `🎨 <b>Ürün İkonu Değiştir</b>\n\nYeni ikonu yazın (emoji):`, {
             parse_mode: 'HTML',
-            reply_markup: { inline_keyboard: [[{ text: "🔙 İptal", callback_data: `admin_game_products_${loadProducts().products[prodKey]?.game}` }]] }
+            reply_markup: { inline_keyboard: [[{ text: "🔙 İptal", callback_data: `admin_edit_gprod_${prodKey}` }]] }
         });
+    }
+    
+    // Ürün adı düzenle
+    if (data.startsWith("admin_prod_name_")) {
+        if (chatId !== ADMIN_ID) return;
+        const prodKey = data.substring(16);
+        const prodData = loadProducts();
+        const product = prodData.products[prodKey];
+        adminState[chatId] = { action: 'edit_prod_name', prodKey };
+        return bot.sendMessage(chatId, `📛 <b>Ürün Adı Değiştir</b>\n\nMevcut: ${product.name}\n\nYeni adı yazın:`, {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [[{ text: "🔙 İptal", callback_data: `admin_edit_gprod_${prodKey}` }]] }
+        });
+    }
+    
+    // Ürün açıklama düzenle
+    if (data.startsWith("admin_prod_desc_")) {
+        if (chatId !== ADMIN_ID) return;
+        const prodKey = data.substring(16);
+        const prodData = loadProducts();
+        const product = prodData.products[prodKey];
+        
+        let currentDesc = product.description || '';
+        try {
+            const descFile = path.join(__dirname, 'descriptions', `${product.name}.txt`);
+            if (fs.existsSync(descFile)) {
+                currentDesc = fs.readFileSync(descFile, 'utf-8').trim();
+            }
+        } catch (e) {}
+        
+        adminState[chatId] = { action: 'edit_prod_desc', prodKey, productName: product.name };
+        return bot.sendMessage(chatId, `📝 <b>Ürün Açıklaması Düzenle</b>\n\n📦 Ürün: ${product.name}\n\n📝 Mevcut:\n${currentDesc || 'Açıklama yok'}\n\n✏️ Yeni açıklamayı yazın:`, {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [[{ text: "🔙 İptal", callback_data: `admin_edit_gprod_${prodKey}` }]] }
+        });
+    }
+    
+    // Ürün stok yönetimi
+    if (data.startsWith("admin_prod_stock_")) {
+        if (chatId !== ADMIN_ID) return;
+        const prodKey = data.substring(17);
+        return showAdminStockMenu(chatId, prodKey, messageId);
+    }
+    
+    // Stok ekle
+    if (data.startsWith("admin_stock_add_")) {
+        if (chatId !== ADMIN_ID) return;
+        const parts = data.substring(16).split("_");
+        const prodKey = parts[0];
+        const days = parts[1];
+        const prodData = loadProducts();
+        const product = prodData.products[prodKey];
+        adminState[chatId] = { action: 'add_stock', prodKey, days };
+        return bot.sendMessage(chatId, `📦 <b>Stok Ekle</b>\n\n📦 Ürün: ${product.name}\n⏱ Süre: ${days} gün\n\nEklemek istediğiniz stok kodlarını yazın (her satıra bir kod):`, {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [[{ text: "🔙 İptal", callback_data: `admin_prod_stock_${prodKey}` }]] }
+        });
+    }
+    
+    // Stokları listele
+    if (data.startsWith("admin_stock_list_")) {
+        if (chatId !== ADMIN_ID) return;
+        const parts = data.substring(17).split("_");
+        const prodKey = parts[0];
+        const days = parts[1];
+        const prodData = loadProducts();
+        const product = prodData.products[prodKey];
+        const stocks = product.stock?.[days] || [];
+        
+        if (stocks.length === 0) {
+            return bot.sendMessage(chatId, `📦 <b>${product.name}</b> - ${days} gün\n\n❌ Bu süre için stok yok.`, {
+                parse_mode: 'HTML',
+                reply_markup: { inline_keyboard: [[{ text: "🔙 Geri", callback_data: `admin_prod_stock_${prodKey}` }]] }
+            });
+        }
+        
+        let text = `📦 <b>${product.name}</b> - ${days} gün\n\n📋 Stoklar (${stocks.length} adet):\n\n`;
+        stocks.forEach((s, i) => {
+            text += `${i + 1}. <code>${s}</code>\n`;
+        });
+        
+        return bot.sendMessage(chatId, text, {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [
+                [{ text: "🗑 Tümünü Sil", callback_data: `admin_stock_clear_${prodKey}_${days}` }],
+                [{ text: "🔙 Geri", callback_data: `admin_prod_stock_${prodKey}` }]
+            ]}
+        });
+    }
+    
+    // Stokları temizle
+    if (data.startsWith("admin_stock_clear_")) {
+        if (chatId !== ADMIN_ID) return;
+        const parts = data.substring(18).split("_");
+        const prodKey = parts[0];
+        const days = parts[1];
+        const prodData = loadProducts();
+        
+        if (prodData.products[prodKey]) {
+            prodData.products[prodKey].stock[days] = [];
+            saveProducts(prodData);
+            addLog('admin_action', `📦 Stok temizlendi: ${prodData.products[prodKey].name} - ${days} gün`);
+        }
+        
+        return bot.answerCallbackQuery(query.id, { text: "✅ Stoklar temizlendi!" }).then(() => showAdminStockMenu(chatId, prodKey, messageId));
+    }
+    
+    // Ürün oyun değiştir
+    if (data.startsWith("admin_prod_game_")) {
+        if (chatId !== ADMIN_ID) return;
+        const prodKey = data.substring(16);
+        const prodData = loadProducts();
+        const games = prodData.games || {};
+        
+        const buttons = Object.entries(games)
+            .sort((a, b) => (a[1].order || 99) - (b[1].order || 99))
+            .map(([gameKey, game]) => [{
+                text: `${game.icon || '🎮'} ${game.name}`,
+                callback_data: `admin_set_prod_game_${prodKey}_${gameKey}`
+            }]);
+        buttons.push([{ text: "🔙 İptal", callback_data: `admin_edit_gprod_${prodKey}` }]);
+        
+        return bot.sendMessage(chatId, `🎮 <b>Oyun Seç</b>\n\nBu ürünün ait olacağı oyunu seçin:`, {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: buttons }
+        });
+    }
+    
+    // Ürün oyun ata
+    if (data.startsWith("admin_set_prod_game_")) {
+        if (chatId !== ADMIN_ID) return;
+        const parts = data.substring(20).split("_");
+        const prodKey = parts[0];
+        const gameKey = parts.slice(1).join("_");
+        const prodData = loadProducts();
+        
+        if (prodData.products[prodKey]) {
+            prodData.products[prodKey].game = gameKey;
+            saveProducts(prodData);
+            addLog('admin_action', `🎮 Ürün oyunu değişti: ${prodKey} -> ${gameKey}`);
+        }
+        
+        return bot.answerCallbackQuery(query.id, { text: "✅ Oyun değiştirildi!" }).then(() => showAdminProductEdit(chatId, prodKey, messageId));
+    }
+    
+    // Ürün platform değiştir
+    if (data.startsWith("admin_prod_platform_")) {
+        if (chatId !== ADMIN_ID) return;
+        const prodKey = data.substring(20);
+        
+        const buttons = [
+            [{ text: "🤖 Android", callback_data: `admin_set_prod_plat_${prodKey}_android` }],
+            [{ text: "🍎 iOS", callback_data: `admin_set_prod_plat_${prodKey}_ios` }],
+            [{ text: "🪟 Windows", callback_data: `admin_set_prod_plat_${prodKey}_windows` }],
+            [{ text: "🎮 Emülatör", callback_data: `admin_set_prod_plat_${prodKey}_emulator` }],
+            [{ text: "🔙 İptal", callback_data: `admin_edit_gprod_${prodKey}` }]
+        ];
+        
+        return bot.sendMessage(chatId, `📱 <b>Platform Seç</b>\n\nBu ürünün platformunu seçin:`, {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: buttons }
+        });
+    }
+    
+    // Ürün platform ata
+    if (data.startsWith("admin_set_prod_plat_")) {
+        if (chatId !== ADMIN_ID) return;
+        const parts = data.substring(20).split("_");
+        const prodKey = parts[0];
+        const platform = parts[1];
+        const prodData = loadProducts();
+        
+        if (prodData.products[prodKey]) {
+            prodData.products[prodKey].subcategory = platform;
+            // Category'yi de güncelle
+            prodData.products[prodKey].category = (platform === 'windows' || platform === 'emulator') ? 'pc' : 'mobile';
+            saveProducts(prodData);
+            addLog('admin_action', `📱 Ürün platformu değişti: ${prodKey} -> ${platform}`);
+        }
+        
+        return bot.answerCallbackQuery(query.id, { text: "✅ Platform değiştirildi!" }).then(() => showAdminProductEdit(chatId, prodKey, messageId));
+    }
+    
+    // Ürün sil
+    if (data.startsWith("admin_prod_delete_")) {
+        if (chatId !== ADMIN_ID) return;
+        const prodKey = data.substring(18);
+        const prodData = loadProducts();
+        const product = prodData.products[prodKey];
+        
+        if (!product) return;
+        
+        return bot.sendMessage(chatId, `🗑 <b>Ürün Sil</b>\n\n⚠️ <b>${product.name}</b> ürününü silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz!`, {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [
+                [{ text: "✅ Evet, Sil", callback_data: `admin_confirm_del_prod_${prodKey}` }],
+                [{ text: "❌ Hayır, İptal", callback_data: `admin_edit_gprod_${prodKey}` }]
+            ]}
+        });
+    }
+    
+    // Ürün silme onay
+    if (data.startsWith("admin_confirm_del_prod_")) {
+        if (chatId !== ADMIN_ID) return;
+        const prodKey = data.substring(23);
+        const prodData = loadProducts();
+        const product = prodData.products[prodKey];
+        const gameKey = product?.game;
+        
+        if (product) {
+            delete prodData.products[prodKey];
+            saveProducts(prodData);
+            addLog('admin_action', `🗑 Ürün silindi: ${product.name}`);
+        }
+        
+        return bot.answerCallbackQuery(query.id, { text: "✅ Ürün silindi!" }).then(() => {
+            if (gameKey) {
+                showAdminGameProducts(chatId, gameKey, messageId);
+            } else {
+                showAdminGames(chatId, messageId);
+            }
+        });
+    }
+    
+    // Oyuna yeni ürün ekle
+    if (data.startsWith("admin_add_gprod_")) {
+        if (chatId !== ADMIN_ID) return;
+        const gameKey = data.substring(16);
+        const prodData = loadProducts();
+        const game = prodData.games?.[gameKey];
+        
+        adminState[chatId] = { action: 'add_game_product', gameKey, step: 'name' };
+        return bot.sendMessage(chatId, `➕ <b>Yeni Ürün Ekle</b>\n\n🎮 Oyun: ${game?.name || gameKey}\n\n📛 Ürün adını yazın:`, {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [[{ text: "🔙 İptal", callback_data: `admin_edit_game_${gameKey}` }]] }
+        });
+    }
+    
+    // Yeni ürün platform seçimi
+    if (data.startsWith("admin_new_prod_plat_")) {
+        if (chatId !== ADMIN_ID) return;
+        const platform = data.substring(20);
+        const state = adminState[chatId];
+        
+        if (state && state.action === 'add_game_product') {
+            state.platform = platform;
+            state.step = 'prices';
+            adminState[chatId] = state;
+            
+            const prodData = loadProducts();
+            const durations = prodData.settings?.durations || [{ days: 7 }, { days: 30 }, { days: 60 }];
+            const examplePrices = durations.map(d => `${d.days}:0`).join(',');
+            
+            return bot.sendMessage(chatId, `➕ <b>Yeni Ürün Ekle</b>\n\n📛 Ad: ${state.productName}\n📱 Platform: ${platform}\n\n💰 Fiyatları yazın:\nFormat: <code>${examplePrices}</code>\n\nÖrnek: <code>7:400,30:750,60:1200</code>`, {
+                parse_mode: 'HTML',
+                reply_markup: { inline_keyboard: [[{ text: "🔙 İptal", callback_data: `admin_edit_game_${state.gameKey}` }]] }
+            });
+        }
+        return;
     }
     
     // Ürün detay düzenleme sayfası
@@ -3117,6 +3569,173 @@ bot.on("message", (msg) => {
                 parse_mode: 'HTML',
                 reply_markup: { inline_keyboard: [[{ text: "🔙 Ürüne Dön", callback_data: `admin_edit_gprod_${state.prodKey}` }]] }
             });
+        }
+        
+        // Ürün adı değiştir
+        if (state.action === 'edit_prod_name') {
+            const prodData = loadProducts();
+            const product = prodData.products[state.prodKey];
+            const oldName = product?.name;
+            
+            if (product) {
+                product.name = text.trim();
+                saveProducts(prodData);
+                addLog('admin_action', `📛 Ürün adı değişti: ${oldName} -> ${text.trim()}`);
+                
+                // Açıklama dosyasını da yeniden adlandır
+                try {
+                    const oldDescFile = path.join(__dirname, 'descriptions', `${oldName}.txt`);
+                    const newDescFile = path.join(__dirname, 'descriptions', `${text.trim()}.txt`);
+                    if (fs.existsSync(oldDescFile)) {
+                        fs.renameSync(oldDescFile, newDescFile);
+                    }
+                } catch (e) {}
+            }
+            
+            delete adminState[chatId];
+            return bot.sendMessage(chatId, `✅ Ürün adı güncellendi!`, {
+                parse_mode: 'HTML',
+                reply_markup: { inline_keyboard: [[{ text: "🔙 Ürüne Dön", callback_data: `admin_edit_gprod_${state.prodKey}` }]] }
+            });
+        }
+        
+        // Ürün açıklaması değiştir
+        if (state.action === 'edit_prod_desc') {
+            const prodData = loadProducts();
+            const product = prodData.products[state.prodKey];
+            
+            if (product) {
+                // Hem product.description'ı hem de dosyayı güncelle
+                product.description = text.trim();
+                saveProducts(prodData);
+                
+                // Açıklama dosyasını güncelle
+                try {
+                    const descDir = path.join(__dirname, 'descriptions');
+                    if (!fs.existsSync(descDir)) {
+                        fs.mkdirSync(descDir, { recursive: true });
+                    }
+                    const descFile = path.join(descDir, `${product.name}.txt`);
+                    fs.writeFileSync(descFile, text.trim(), 'utf-8');
+                } catch (e) {
+                    console.error('Açıklama dosyası yazılamadı:', e);
+                }
+                
+                addLog('admin_action', `📝 Ürün açıklaması güncellendi: ${product.name}`);
+            }
+            
+            delete adminState[chatId];
+            return bot.sendMessage(chatId, `✅ Ürün açıklaması güncellendi!`, {
+                parse_mode: 'HTML',
+                reply_markup: { inline_keyboard: [[{ text: "🔙 Ürüne Dön", callback_data: `admin_edit_gprod_${state.prodKey}` }]] }
+            });
+        }
+        
+        // Stok ekle
+        if (state.action === 'add_stock') {
+            const prodData = loadProducts();
+            const product = prodData.products[state.prodKey];
+            
+            if (product) {
+                // Her satırı ayrı stok olarak ekle
+                const newStocks = text.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+                
+                if (!product.stock) product.stock = {};
+                if (!product.stock[state.days]) product.stock[state.days] = [];
+                
+                product.stock[state.days].push(...newStocks);
+                saveProducts(prodData);
+                addLog('admin_action', `📦 Stok eklendi: ${product.name} - ${state.days} gün - ${newStocks.length} adet`);
+            }
+            
+            delete adminState[chatId];
+            return bot.sendMessage(chatId, `✅ ${newStocks.length} adet stok eklendi!`, {
+                parse_mode: 'HTML',
+                reply_markup: { inline_keyboard: [[{ text: "🔙 Stok Menüsü", callback_data: `admin_prod_stock_${state.prodKey}` }]] }
+            });
+        }
+        
+        // Oyuna yeni ürün ekle
+        if (state.action === 'add_game_product') {
+            const prodData = loadProducts();
+            
+            if (state.step === 'name') {
+                state.productName = text.trim();
+                state.step = 'platform';
+                adminState[chatId] = state;
+                
+                return bot.sendMessage(chatId, `➕ <b>Yeni Ürün Ekle</b>\n\n📛 Ad: ${state.productName}\n\n📱 Platform seçin:`, {
+                    parse_mode: 'HTML',
+                    reply_markup: { inline_keyboard: [
+                        [{ text: "🤖 Android", callback_data: `admin_new_prod_plat_android` }],
+                        [{ text: "🍎 iOS", callback_data: `admin_new_prod_plat_ios` }],
+                        [{ text: "🪟 Windows", callback_data: `admin_new_prod_plat_windows` }],
+                        [{ text: "🎮 Emülatör", callback_data: `admin_new_prod_plat_emulator` }],
+                        [{ text: "🔙 İptal", callback_data: `admin_edit_game_${state.gameKey}` }]
+                    ]}
+                });
+            }
+            
+            if (state.step === 'prices') {
+                // Format: 7:400,30:750,60:1200
+                const parts = text.split(',');
+                const prices = {};
+                
+                for (const part of parts) {
+                    const [days, price] = part.split(':').map(s => s.trim());
+                    if (days && price && !isNaN(parseInt(price))) {
+                        prices[days] = parseInt(price);
+                    }
+                }
+                
+                if (Object.keys(prices).length === 0) {
+                    return bot.sendMessage(chatId, "❌ Geçersiz format! Örnek: 7:400,30:750,60:1200");
+                }
+                
+                // Ürünü oluştur
+                const prodKey = state.productName.toLowerCase()
+                    .replace(/[^a-z0-9]/g, '_')
+                    .replace(/_+/g, '_')
+                    .replace(/^_|_$/g, '');
+                
+                // En yüksek order'ı bul
+                const gameProducts = Object.values(prodData.products || {}).filter(p => p.game === state.gameKey);
+                const maxOrder = Math.max(0, ...gameProducts.map(p => p.order || 0));
+                
+                const category = (state.platform === 'windows' || state.platform === 'emulator') ? 'pc' : 'mobile';
+                
+                if (!prodData.products) prodData.products = {};
+                prodData.products[prodKey] = {
+                    name: state.productName,
+                    description: '',
+                    category: category,
+                    subcategory: state.platform,
+                    game: state.gameKey,
+                    order: maxOrder + 1,
+                    prices: prices,
+                    stock: {},
+                    maintenance: false,
+                    icon: '📦'
+                };
+                
+                // Her süre için boş stok dizisi oluştur
+                for (const days of Object.keys(prices)) {
+                    prodData.products[prodKey].stock[days] = [];
+                }
+                
+                saveProducts(prodData);
+                addLog('admin_action', `➕ Yeni ürün eklendi: ${state.productName}`);
+                
+                delete adminState[chatId];
+                return bot.sendMessage(chatId, `✅ Ürün eklendi: <b>${state.productName}</b>\n\n🎮 Oyun: ${prodData.games[state.gameKey]?.name}\n📱 Platform: ${state.platform}\n💰 Fiyatlar: ${Object.entries(prices).map(([d, p]) => `${d}g: ${p}₺`).join(', ')}`, {
+                    parse_mode: 'HTML',
+                    reply_markup: { inline_keyboard: [
+                        [{ text: "📝 Açıklama Ekle", callback_data: `admin_prod_desc_${prodKey}` }],
+                        [{ text: "📦 Stok Ekle", callback_data: `admin_prod_stock_${prodKey}` }],
+                        [{ text: "🔙 Oyun Ürünleri", callback_data: `admin_game_products_${state.gameKey}` }]
+                    ]}
+                });
+            }
         }
         
         // Sadakat puan oranı değiştir

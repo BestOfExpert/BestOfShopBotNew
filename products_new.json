@@ -18,6 +18,10 @@
       "name": "💻 PC/Bilgisayar Ürünleri",
       "icon": "💻",
       "subcategories": {
+        "windows": {
+          "name": "🪟 Windows",
+          "icon": "🪟"
+        },
         "emulator": {
           "name": "🎮 Emülatör",
           "icon": "🎮"
@@ -30,43 +34,85 @@
       "name": "Mobile Legends",
       "icon": "⚔️",
       "order": 1,
-      "status": "active"
+      "status": "active",
+      "platforms": ["android", "ios"]
     },
     "8ball_pool": {
       "name": "8 Ball Pool",
       "icon": "🎱",
       "order": 2,
-      "status": "active"
+      "status": "active",
+      "platforms": ["android", "ios"]
     },
     "pubg_mobile": {
       "name": "PUBG Mobile",
       "icon": "🔫",
       "order": 3,
-      "status": "active"
+      "status": "active",
+      "platforms": ["android", "ios", "emulator"]
     },
     "delta_force": {
       "name": "Delta Force",
       "icon": "🪖",
       "order": 4,
-      "status": "active"
+      "status": "active",
+      "platforms": ["android", "ios"]
     },
     "wild_rift": {
       "name": "Wild Rift",
       "icon": "🎮",
       "order": 5,
-      "status": "active"
+      "status": "active",
+      "platforms": ["android", "ios"]
     },
     "standoff2": {
       "name": "Standoff 2",
       "icon": "🔫",
       "order": 6,
-      "status": "active"
+      "status": "active",
+      "platforms": ["android", "emulator"]
     },
     "free_fire": {
       "name": "Free Fire",
       "icon": "🔥",
       "order": 7,
-      "status": "active"
+      "status": "active",
+      "platforms": ["android", "ios"]
+    },
+    "valorant": {
+      "name": "Valorant",
+      "icon": "🎯",
+      "order": 8,
+      "status": "active",
+      "platforms": ["windows"]
+    },
+    "csgo": {
+      "name": "CS2 / CS:GO",
+      "icon": "💣",
+      "order": 9,
+      "status": "active",
+      "platforms": ["windows"]
+    },
+    "fortnite": {
+      "name": "Fortnite",
+      "icon": "🏝️",
+      "order": 10,
+      "status": "active",
+      "platforms": ["windows"]
+    },
+    "apex_legends": {
+      "name": "Apex Legends",
+      "icon": "🦅",
+      "order": 11,
+      "status": "active",
+      "platforms": ["windows"]
+    },
+    "rust": {
+      "name": "Rust",
+      "icon": "🔨",
+      "order": 12,
+      "status": "active",
+      "platforms": ["windows"]
     }
   },
   "products": {
