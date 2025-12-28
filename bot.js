@@ -892,6 +892,14 @@ ${badge}
 // ============== /ADMIN KOMUTU ==============
 bot.onText(/\/admin/, (msg) => {
     const chatId = msg.chat.id;
+    
+    // Eğer FILES_BOT_TOKEN ve SHOP_BOT_TOKEN aynıysa, /admin komutunu atla
+    // Files Bot kendi /admin handler'ı ile yanıt verecek
+    if (filesBot && filesToken === shopToken) {
+        console.log('[Shop Bot] Token aynı, /admin atlanıyor - Files Bot yanıt verecek');
+        return;
+    }
+    
     if (chatId !== ADMIN_ID) {
         return bot.sendMessage(chatId, "❌ Yetkisiz erişim.");
     }
@@ -4368,13 +4376,30 @@ if (filesBot) {
 
     const filesAdminState = {};
 
-    // FILES BOT: /admin komutunu yakala - Shop Bot menüsü gelmesin
+    // FILES BOT: /admin komutunu yakala - direkt admin panelini göster
     filesBot.onText(/\/admin/, (msg) => {
         const chatId = msg.chat.id;
-        if (chatId === ADMIN_ID) {
-            // Admin paneli için /owner kullanılmalı
-            return filesBot.sendMessage(chatId, '📁 **Files Bot Admin Paneli**\n\nAdmin paneline erişmek için /owner yazın.', { parse_mode: 'Markdown' });
-        }
+        if (chatId !== ADMIN_ID) return;
+        
+        console.log(`[Files Bot] /admin komutu alındı - admin paneli gösteriliyor`);
+        
+        // Admin state'i temizle
+        delete filesAdminState[chatId];
+        
+        const productCount = filesProductUploads.size;
+        const mappingCount = Object.keys(productMapping).length;
+        return filesBot.sendMessage(chatId, `**📁 Files Bot Admin Paneli**\n\nToplam menü: ${productCount}\nEşleştirme: ${mappingCount}`, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '📦 Ürünleri Yönet', callback_data: 'files_products' }],
+                    [{ text: '➕ Yeni Ürün Ekle', callback_data: 'files_add_product' }],
+                    [{ text: '🔗 Ürün Eşleştir', callback_data: 'files_mapping' }],
+                    [{ text: '📱 UDID Aldırma', callback_data: 'files_udid_menu' }],
+                    [{ text: '🔑 Anahtarları Yönet', callback_data: 'files_keys' }],
+                ],
+            },
+        });
     });
 
     // FILES BOT: /owner paneli (admin paneli)
