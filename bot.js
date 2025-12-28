@@ -4538,20 +4538,15 @@ if (filesBot) {
     }
 
     function getKeyInfo(key) {
-        console.log(`[Files Bot] Anahtar aranıyor: "${key}"`);
-        console.log(`[Files Bot] Aktif anahtar sayısı: ${Object.keys(activeKeys).length}`);
         for (const orderId in activeKeys) {
             const entry = activeKeys[orderId];
-            console.log(`[Files Bot] Kontrol: orderId=${orderId}, entry.key="${entry.key}", aranan="${key}", eşit mi=${entry.key === key}`);
             if (entry.key === key && entry.expiresAt > Date.now()) {
                 if (entry.product && !entry.products) {
                     entry.products = [entry.product];
                 }
-                console.log(`[Files Bot] Anahtar BULUNDU: ${JSON.stringify(entry)}`);
                 return entry;
             }
         }
-        console.log(`[Files Bot] Anahtar BULUNAMADI`);
         return null;
     }
 
@@ -5572,8 +5567,6 @@ if (filesBot) {
         const text = msg.text?.trim();
         const session = filesUserSessions.get(chatId);
 
-        console.log(`[Files Bot MSG] chatId=${chatId}, text="${text}", session.step=${session?.step}`);
-
         // Komutları ignore et (/, /start, /admin vs.)
         if (!text || text.startsWith('/')) return;
 
@@ -5628,9 +5621,7 @@ if (filesBot) {
             const productList = accessibleMenus.map((p, i) => `${i + 1}. ${p}`).join('\n');
             const welcomeMsg = `✅ **Anahtar Doğrulandı!**\n\n📦 **Ürünler:**\n${productList}\n\n📅 **Kalan:** ${daysLeft} gün\n\nAşağıdan ürün seçin 👇`;
             
-            console.log(`[Files Bot] Doğrulandı mesajı gönderiliyor`);
             filesSendAndDelete('sendMessage', chatId, welcomeMsg, { ...menu, parse_mode: 'Markdown' });
-            console.log(`[Files Bot] Anahtar bloğundan çıkılıyor (return)`);
             return;
         }
 
