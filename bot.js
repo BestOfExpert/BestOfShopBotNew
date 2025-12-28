@@ -4101,8 +4101,8 @@ Yenilemek için ana menüden ürünü seçebilirsiniz.`, {
             changed = true;
         }
         
-        // 7 gün geçmiş anahtarları sil
-        if (timeLeft < -7 * oneDayMs) {
+        // Süresi biten anahtarları hemen sil
+        if (timeLeft <= 0) {
             delete activeKeys[orderId];
             changed = true;
         }
