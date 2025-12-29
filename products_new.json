@@ -21,6 +21,10 @@
         "windows": {
           "name": "🪟 Windows",
           "icon": "🪟"
+        },
+        "emulator": {
+          "name": "🎮 Emülatör",
+          "icon": "🎮"
         }
       }
     }

@@ -318,22 +318,39 @@ Lütfen ürün kategorisini seçin:`;
     }
 }
 
-// Platform seçim menüsü (Android/iOS) - Mobil için
-function showPlatformMenu(chatId, messageId = null) {
-    const buttons = [
-        [{ text: "🤖 Android", callback_data: "platform_android" }],
-        [{ text: "🍎 Apple/iOS", callback_data: "platform_ios" }],
-        [{ text: "🔙 Ana Menü", callback_data: "back_main" }]
-    ];
+// Platform seçim menüsü - Dinamik (kategorideki subcategories'den okuyor)
+function showPlatformMenu(chatId, categoryKey = 'mobile', messageId = null) {
+    const data = loadProducts();
+    const category = data.categories?.[categoryKey];
+    
+    if (!category) {
+        return bot.sendMessage(chatId, "❌ Kategori bulunamadı.");
+    }
+    
+    const subcategories = category.subcategories || {};
+    const subKeys = Object.keys(subcategories);
+    
+    if (subKeys.length === 0) {
+        return bot.sendMessage(chatId, "❌ Bu kategoride platform tanımlanmamış.");
+    }
+    
+    const buttons = subKeys.map(subKey => {
+        const sub = subcategories[subKey];
+        return [{ 
+            text: sub.name || subKey, 
+            callback_data: `platform_${categoryKey}_${subKey}` 
+        }];
+    });
+    buttons.push([{ text: "🔙 Ana Menü", callback_data: "back_main" }]);
     
     const opts = {
         parse_mode: "Markdown",
         reply_markup: { inline_keyboard: buttons }
     };
     
-    const text = `📱 **Mobil Mod Ürünleri**
+    const text = `${category.icon || '📁'} **${category.name}**
 
-📲 Cihazınızın işletim sistemini seçin:`;
+📲 Platform seçin:`;
     
     if (messageId) {
         bot.editMessageText(text, { chat_id: chatId, message_id: messageId, ...opts }).catch(() => {
@@ -344,18 +361,9 @@ function showPlatformMenu(chatId, messageId = null) {
     }
 }
 
-// Platform seçim menüsü (Windows/Emülatör) - PC için
+// Eski fonksiyonu kaldır - artık showPlatformMenu dinamik
 function showPCPlatformMenu(chatId, messageId = null) {
-    // Direkt Windows oyunlarını göster (emülatör kaldırıldı)
-    return showGamesMenu(chatId, 'windows', messageId);
-    
-    if (messageId) {
-        bot.editMessageText(text, { chat_id: chatId, message_id: messageId, ...opts }).catch(() => {
-            bot.sendMessage(chatId, text, opts);
-        });
-    } else {
-        bot.sendMessage(chatId, text, opts);
-    }
+    return showPlatformMenu(chatId, 'pc', messageId);
 }
 
 // Oyun listesi menüsü (Platform filtrelemeli)
@@ -385,19 +393,24 @@ function showGamesMenu(chatId, platform, messageId = null) {
         }]);
     }
     
-    // PC platformları için farklı geri butonu (direkt ana menüye)
+    // Platform kategorisini belirle ve geri butonu ayarla
     const isPCPlatform = platform === 'windows' || platform === 'emulator';
-    buttons.push([{ text: "🔙 Geri", callback_data: isPCPlatform ? "back_main" : "games_menu" }]);
+    const backCallback = isPCPlatform ? "pc_games_menu" : "games_menu";
+    buttons.push([{ text: "🔙 Geri", callback_data: backCallback }]);
     buttons.push([{ text: "🏠 Ana Menü", callback_data: "back_main" }]);
     
-    // Platform ismini belirle
-    let platformName;
-    switch (platform) {
-        case 'android': platformName = '🤖 Android'; break;
-        case 'ios': platformName = '🍎 Apple/iOS'; break;
-        case 'windows': platformName = '🪟 Windows'; break;
-        case 'emulator': platformName = '🎮 Emülatör'; break;
-        default: platformName = platform;
+    // Platform ismini kategoriden al
+    const categories = data.categories || {};
+    let platformName = platform;
+    let categoryIcon = '📁';
+    
+    for (const catKey of Object.keys(categories)) {
+        const cat = categories[catKey];
+        if (cat.subcategories?.[platform]) {
+            platformName = cat.subcategories[platform].name || platform;
+            categoryIcon = cat.icon || '📁';
+            break;
+        }
     }
     
     const opts = {
@@ -405,7 +418,6 @@ function showGamesMenu(chatId, platform, messageId = null) {
         reply_markup: { inline_keyboard: buttons }
     };
     
-    const categoryIcon = isPCPlatform ? '💻' : '📱';
     const text = `${categoryIcon} **${platformName} Oyunları**
 
 🎮 Lütfen bir oyun seçin:`;
@@ -1293,17 +1305,27 @@ bot.on("callback_query", (query) => {
         return showMainMenu(chatId, messageId);
     }
     
-    // Platform seçim menüsü (Mobile Mod'dan sonra)
+    // Platform seçim menüsü (Mobile Mod için)
     if (data === "games_menu") {
-        return showPlatformMenu(chatId, messageId);
+        return showPlatformMenu(chatId, 'mobile', messageId);
     }
     
     // PC Platform seçim menüsü
     if (data === "pc_games_menu") {
-        return showPCPlatformMenu(chatId, messageId);
+        return showPlatformMenu(chatId, 'pc', messageId);
     }
     
-    // Platform seçildi - oyunları göster (Mobil)
+    // Dinamik platform seçimi - platform_{category}_{subcategory}
+    if (data.startsWith("platform_") && data.includes("_")) {
+        const parts = data.substring(9).split("_");
+        if (parts.length >= 2) {
+            const categoryKey = parts[0]; // mobile veya pc
+            const platformKey = parts.slice(1).join("_"); // android, ios, windows, emulator
+            return showGamesMenu(chatId, platformKey, messageId);
+        }
+    }
+    
+    // Eski uyumluluk - platform_android, platform_ios, platform_windows
     if (data === "platform_android") {
         return showGamesMenu(chatId, 'android', messageId);
     }
