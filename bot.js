@@ -1050,6 +1050,7 @@ function showAdminGameEdit(chatId, gameKey, messageId = null) {
         [{ text: `📊 ${statusText}`, callback_data: `admin_game_status_${gameKey}` }],
         [{ text: "📦 Ürünleri Yönet", callback_data: `admin_game_products_${gameKey}` }],
         [{ text: "➕ Bu Oyuna Ürün Ekle", callback_data: `admin_add_gprod_${gameKey}` }],
+        [{ text: "📤 Tüm Ürünleri Taşı", callback_data: `admin_game_move_all_${gameKey}` }],
         [
             { text: "⬆️ Yukarı", callback_data: `admin_game_up_${gameKey}` },
             { text: "⬇️ Aşağı", callback_data: `admin_game_down_${gameKey}` }
@@ -1727,6 +1728,179 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
             return bot.answerCallbackQuery(query.id, { text: `✅ Oyun durumu: ${statusText}` }).then(() => showAdminGameEdit(chatId, gameKey, messageId));
         }
         return;
+    }
+    
+    // Oyunun tüm ürünlerini taşı - menü
+    if (data.startsWith("admin_game_move_all_")) {
+        if (chatId !== ADMIN_ID) return;
+        const gameKey = data.substring(20);
+        const prodData = loadProducts();
+        const game = prodData.games?.[gameKey];
+        
+        if (!game) return;
+        
+        return bot.sendMessage(chatId, `📤 <b>${game.name} - Toplu Taşıma</b>\n\nNe yapmak istiyorsunuz?`, {
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: "🎮 Başka Oyuna Taşı", callback_data: `admin_move_to_game_${gameKey}` }],
+                    [{ text: "📱 Platform Değiştir (Tümü)", callback_data: `admin_move_to_plat_${gameKey}` }],
+                    [{ text: "🔙 Geri", callback_data: `admin_edit_game_${gameKey}` }]
+                ]
+            }
+        });
+    }
+    
+    // Başka oyuna taşı - oyun seçimi
+    if (data.startsWith("admin_move_to_game_")) {
+        if (chatId !== ADMIN_ID) return;
+        const fromGameKey = data.substring(19);
+        const prodData = loadProducts();
+        const games = prodData.games || {};
+        
+        const buttons = Object.entries(games)
+            .filter(([gk]) => gk !== fromGameKey)
+            .map(([gk, g]) => [{
+                text: `${g.icon || '🎮'} ${g.name}`,
+                callback_data: `admin_move_game_confirm_${fromGameKey}_${gk}`
+            }]);
+        
+        if (buttons.length === 0) {
+            return bot.sendMessage(chatId, "❌ Taşınacak başka oyun yok.");
+        }
+        
+        buttons.push([{ text: "🔙 Geri", callback_data: `admin_game_move_all_${fromGameKey}` }]);
+        
+        return bot.sendMessage(chatId, `🎮 <b>Hedef Oyun Seçin</b>\n\nÜrünler hangi oyuna taşınsın?`, {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: buttons }
+        });
+    }
+    
+    // Oyuna taşıma onayı
+    if (data.startsWith("admin_move_game_confirm_")) {
+        if (chatId !== ADMIN_ID) return;
+        const rest = data.substring(24);
+        const prodData = loadProducts();
+        
+        // fromGameKey ve toGameKey'i bul
+        let fromGameKey = null;
+        let toGameKey = null;
+        
+        for (const gk of Object.keys(prodData.games || {})) {
+            if (rest.startsWith(gk + '_')) {
+                fromGameKey = gk;
+                toGameKey = rest.substring(gk.length + 1);
+                break;
+            }
+        }
+        
+        if (!fromGameKey || !toGameKey) return bot.sendMessage(chatId, "❌ Hata oluştu.");
+        
+        const fromGame = prodData.games?.[fromGameKey];
+        const toGame = prodData.games?.[toGameKey];
+        
+        if (!fromGame || !toGame) return bot.sendMessage(chatId, "❌ Oyun bulunamadı.");
+        
+        // Ürünleri taşı
+        let movedCount = 0;
+        for (const prodKey in prodData.products) {
+            if (prodData.products[prodKey].game === fromGameKey) {
+                prodData.products[prodKey].game = toGameKey;
+                movedCount++;
+            }
+        }
+        
+        saveProducts(prodData);
+        addLog('admin_action', `📤 ${movedCount} ürün ${fromGame.name} -> ${toGame.name} taşındı`);
+        
+        return bot.sendMessage(chatId, `✅ <b>${movedCount} ürün taşındı!</b>\n\n📤 Kaynak: ${fromGame.name}\n📥 Hedef: ${toGame.name}`, {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [[{ text: "🔙 Oyuna Dön", callback_data: `admin_edit_game_${fromGameKey}` }]] }
+        });
+    }
+    
+    // Platform değiştir (tümü) - platform seçimi
+    if (data.startsWith("admin_move_to_plat_")) {
+        if (chatId !== ADMIN_ID) return;
+        const gameKey = data.substring(19);
+        const prodData = loadProducts();
+        const categories = prodData.categories || {};
+        
+        // Tüm platformları listele
+        const buttons = [];
+        for (const catKey in categories) {
+            const cat = categories[catKey];
+            for (const subKey in (cat.subcategories || {})) {
+                const sub = cat.subcategories[subKey];
+                buttons.push([{
+                    text: `${sub.icon || '📱'} ${sub.name}`,
+                    callback_data: `admin_move_plat_confirm_${gameKey}_${subKey}`
+                }]);
+            }
+        }
+        
+        if (buttons.length === 0) {
+            return bot.sendMessage(chatId, "❌ Platform bulunamadı.");
+        }
+        
+        buttons.push([{ text: "🔙 Geri", callback_data: `admin_game_move_all_${gameKey}` }]);
+        
+        return bot.sendMessage(chatId, `📱 <b>Hedef Platform Seçin</b>\n\nTüm ürünler hangi platforma taşınsın?`, {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: buttons }
+        });
+    }
+    
+    // Platform taşıma onayı
+    if (data.startsWith("admin_move_plat_confirm_")) {
+        if (chatId !== ADMIN_ID) return;
+        const rest = data.substring(24);
+        const prodData = loadProducts();
+        
+        // gameKey ve platformKey'i bul
+        let gameKey = null;
+        let platformKey = null;
+        
+        for (const gk of Object.keys(prodData.games || {})) {
+            if (rest.startsWith(gk + '_')) {
+                gameKey = gk;
+                platformKey = rest.substring(gk.length + 1);
+                break;
+            }
+        }
+        
+        if (!gameKey || !platformKey) return bot.sendMessage(chatId, "❌ Hata oluştu.");
+        
+        const game = prodData.games?.[gameKey];
+        if (!game) return bot.sendMessage(chatId, "❌ Oyun bulunamadı.");
+        
+        // Platform adını bul
+        let platformName = platformKey;
+        for (const catKey in prodData.categories || {}) {
+            const sub = prodData.categories[catKey]?.subcategories?.[platformKey];
+            if (sub) {
+                platformName = sub.name;
+                break;
+            }
+        }
+        
+        // Ürünleri taşı
+        let movedCount = 0;
+        for (const prodKey in prodData.products) {
+            if (prodData.products[prodKey].game === gameKey) {
+                prodData.products[prodKey].subcategory = platformKey;
+                movedCount++;
+            }
+        }
+        
+        saveProducts(prodData);
+        addLog('admin_action', `📱 ${game.name} oyununun ${movedCount} ürünü ${platformName} platformuna taşındı`);
+        
+        return bot.sendMessage(chatId, `✅ <b>${movedCount} ürün platformu değiştirildi!</b>\n\n🎮 Oyun: ${game.name}\n📱 Yeni Platform: ${platformName}`, {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: [[{ text: "🔙 Oyuna Dön", callback_data: `admin_edit_game_${gameKey}` }]] }
+        });
     }
     
     // Oyun ikonu değiştir
