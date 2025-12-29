@@ -2502,8 +2502,8 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
             });
         }
         
-        // İlk 15 müşteriyi göster
-        const displayList = vipList.slice(0, 15);
+        // Tüm müşterileri göster (max 100)
+        const displayList = vipList.slice(0, 100);
         let text = `<b>${title}</b>\n\n`;
         
         displayList.forEach(([userId, data], i) => {
@@ -2513,8 +2513,8 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
             text += `${i + 1}. <code>${userId}</code> ${badge}\n   📦 ${data.purchases || 0} alım | 💰 ${spent} TL | ⭐ ${points} puan\n\n`;
         });
         
-        if (vipList.length > 15) {
-            text += `\n<i>...ve ${vipList.length - 15} müşteri daha</i>`;
+        if (vipList.length > 100) {
+            text += `\n<i>...ve ${vipList.length - 100} müşteri daha</i>`;
         }
         
         return bot.editMessageText(text, {
@@ -2568,7 +2568,7 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
             title = `📜 Son ${count} İşlem`;
         } else if (data.startsWith("logs_type_")) {
             const type = data.substring(10);
-            logs = logs.filter(l => l.type === type).slice(0, 20);
+            logs = logs.filter(l => l.type === type).slice(0, 100);
             const typeNames = { sale: "💰 Satış", key_sent: "🔑 Anahtar", renewal: "🔄 Yenileme", vip_upgrade: "👑 VIP", admin_action: "⚙️ Admin", payment: "💳 Ödeme" };
             title = `${typeNames[type] || type} Logları`;
         }
@@ -2612,15 +2612,15 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
         let text = "📋 <b>Aktif Anahtarlar</b>\n\n";
         const now = new Date();
         
-        keys.slice(0, 20).forEach(([orderId, entry], i) => {
+        keys.slice(0, 100).forEach(([orderId, entry], i) => {
             const expiry = new Date(entry.expiresAt);
             const remaining = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
             const status = remaining > 0 ? `⏳ ${remaining} gün` : '❌ Süresi dolmuş';
             text += `${i + 1}. <code>${entry.key}</code>\n   👤 ${entry.userId} | ${status}\n\n`;
         });
         
-        if (keys.length > 20) {
-            text += `\n... ve ${keys.length - 20} anahtar daha`;
+        if (keys.length > 100) {
+            text += `\n... ve ${keys.length - 100} anahtar daha`;
         }
         
         return bot.sendMessage(chatId, text, {
@@ -5028,7 +5028,7 @@ if (filesBot) {
             
             return filesBot.sendMessage(chatId, `**📦 Menü Seçimi**\n\n🔑 Anahtar: \`${state.key}\`\n📅 Süre: ${state.days} gün\n\n**Seçilen Menüler:**\n${selectedList}\n\n👇 Erişim verilecek menüleri seçin (birden fazla seçebilirsiniz):`, {
                 parse_mode: 'Markdown',
-                reply_markup: { inline_keyboard: buttons.slice(0, 20) }
+                reply_markup: { inline_keyboard: buttons.slice(0, 100) }
             });
         }
         
@@ -5077,7 +5077,7 @@ if (filesBot) {
                 chat_id: chatId,
                 message_id: query.message.message_id,
                 parse_mode: 'Markdown',
-                reply_markup: { inline_keyboard: buttons.slice(0, 20) }
+                reply_markup: { inline_keyboard: buttons.slice(0, 100) }
             });
         }
         
@@ -5204,7 +5204,7 @@ if (filesBot) {
             
             return filesBot.sendMessage(chatId, `**📦 Menü Seçimi**\n\n🔑 Anahtar: \`${state.key}\`\n📅 Süre: ${state.days} gün\n👤 Müşteri: Atanmadı\n\n**Seçilen Menüler:**\n(Henüz seçilmedi)\n\n👇 Erişim verilecek menüleri seçin:`, {
                 parse_mode: 'Markdown',
-                reply_markup: { inline_keyboard: buttons.slice(0, 20) }
+                reply_markup: { inline_keyboard: buttons.slice(0, 100) }
             });
         }
 
@@ -5217,7 +5217,7 @@ if (filesBot) {
             const validKeys = Object.entries(activeKeys)
                 .filter(([_, k]) => k.expiresAt > Date.now())
                 .sort((a, b) => b[1].expiresAt - a[1].expiresAt)
-                .slice(0, 10);
+                .slice(0, 100);
             
             if (validKeys.length === 0) {
                 return filesBot.sendMessage(chatId, '❌ Aktif anahtar bulunamadı.', {
@@ -5282,7 +5282,7 @@ if (filesBot) {
                 });
             }
             
-            const buttons = filesMenus.slice(0, 10).map(name => {
+            const buttons = filesMenus.map(name => {
                 return [{ text: `📦 ${name.substring(0, 25)}`, callback_data: `files_key_addp_${name.substring(0, 20)}` }];
             });
             buttons.push([{ text: '🔙 İptal', callback_data: `files_key_${orderId.substring(0, 20)}` }]);
@@ -5418,7 +5418,7 @@ if (filesBot) {
             
             return filesBot.sendMessage(chatId, '**📦 UDID Menü Ayarları**\n\n✅ UDID aktif | ❌ UDID kapalı\n\nTıklayarak açıp kapatın:', {
                 parse_mode: 'Markdown',
-                reply_markup: { inline_keyboard: buttons.slice(0, 15) },
+                reply_markup: { inline_keyboard: buttons.slice(0, 100) },
             });
         }
         
@@ -5456,7 +5456,7 @@ if (filesBot) {
                 });
             }
             
-            const buttons = pending.slice(0, 10).map(([orderId, data]) => {
+            const buttons = pending.slice(0, 100).map(([orderId, data]) => {
                 const shortFcode = data.fcode.length > 20 ? data.fcode.substring(0, 20) + '...' : data.fcode;
                 return [{ text: `📱 ${shortFcode}`, callback_data: `files_udid_view_${orderId}` }];
             });
@@ -5668,7 +5668,7 @@ if (filesBot) {
             
             return filesBot.sendMessage(chatId, '**➕ Menü Ekle**', {
                 parse_mode: 'Markdown',
-                reply_markup: { inline_keyboard: buttons.slice(0, 12) },
+                reply_markup: { inline_keyboard: buttons.slice(0, 100) },
             });
         }
 
@@ -6191,7 +6191,7 @@ if (filesBot) {
             
             return filesBot.sendMessage(chatId, `**📦 Menü Seçimi**\n\n🔑 Anahtar: \`${state.key}\`\n📅 Süre: ${state.days} gün\n👤 Müşteri: \`${customerId}\`\n\n**Seçilen Menüler:**\n(Henüz seçilmedi)\n\n👇 Erişim verilecek menüleri seçin:`, {
                 parse_mode: 'Markdown',
-                reply_markup: { inline_keyboard: buttons.slice(0, 20) }
+                reply_markup: { inline_keyboard: buttons.slice(0, 100) }
             });
         }
 
