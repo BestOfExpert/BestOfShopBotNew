@@ -179,13 +179,28 @@ const DEFAULT_PAYMENT_SETTINGS = {
     iban_alici: "Moka United Ödeme ve Elektronik Para Kuruluşu A.Ş.",
     iban_aciklama: "88295280440",
     papara: "papara ödeme yöntemi şuanda kullanımda değildir",
-    binance: "TWdjyffvtyhbwuQzrNdh3A215EG6cNPWVL"
+    binance: "TWdjyffvtyhbwuQzrNdh3A215EG6cNPWVL",
+    // Dinamik ödeme yöntemleri
+    methods: [
+        { id: 'iban', name: 'IBAN', icon: '💸', enabled: true, text: '' },
+        { id: 'papara', name: 'Papara', icon: '🏦', enabled: true, text: '' },
+        { id: 'binance', name: 'Binance (USDT)', icon: '💰', enabled: true, text: '' }
+    ]
 };
 
 function loadPaymentSettings() {
     try {
         if (fs.existsSync(PAYMENT_FILE)) {
-            return JSON.parse(fs.readFileSync(PAYMENT_FILE, 'utf-8'));
+            const loaded = JSON.parse(fs.readFileSync(PAYMENT_FILE, 'utf-8'));
+            // Eski format uyumluluğu - methods yoksa ekle
+            if (!loaded.methods) {
+                loaded.methods = [
+                    { id: 'iban', name: 'IBAN', icon: '💸', enabled: true, text: '' },
+                    { id: 'papara', name: 'Papara', icon: '🏦', enabled: true, text: '' },
+                    { id: 'binance', name: 'Binance (USDT)', icon: '💰', enabled: true, text: '' }
+                ];
+            }
+            return loaded;
         }
     } catch (e) {}
     return { ...DEFAULT_PAYMENT_SETTINGS };
@@ -2839,12 +2854,131 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
         return deleteDuration(chatId, days, messageId);
     }
     
-    // Admin - ödeme düzenle
-    if (data.startsWith("admin_pay_")) {
-        const field = data.substring(10);
-        adminState[chatId] = { action: 'edit_payment', field };
-        const fieldNames = { iban: 'IBAN', iban_alici: 'Alıcı Adı', iban_aciklama: 'Açıklama', papara: 'Papara', binance: 'Binance' };
-        return bot.sendMessage(chatId, `Yeni ${fieldNames[field] || field} değerini girin:`);
+    // ============== YENİ ÖDEME YÖNTEMİ SİSTEMİ ==============
+    
+    // Ödeme yöntemi düzenle
+    if (data.startsWith("admin_pay_edit_")) {
+        const methodId = data.substring(15);
+        const method = (paymentSettings.methods || []).find(m => m.id === methodId);
+        if (!method) return bot.sendMessage(chatId, "❌ Ödeme yöntemi bulunamadı.");
+        
+        const status = method.enabled ? '✅ Aktif' : '❌ Pasif';
+        const text = `${method.icon} **${method.name}** Düzenleme\n\n` +
+            `📊 **Durum:** ${status}\n` +
+            `📝 **Müşteri Metni:**\n\`${method.text || 'Ayarlanmamış'}\``;
+        
+        return bot.sendMessage(chatId, text, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: method.enabled ? '❌ Pasif Yap' : '✅ Aktif Yap', callback_data: `admin_pay_toggle_${methodId}` }],
+                    [{ text: '📝 Müşteri Metnini Düzenle', callback_data: `admin_pay_text_${methodId}` }],
+                    [{ text: '✏️ İsim Değiştir', callback_data: `admin_pay_name_${methodId}` }],
+                    [{ text: '🎨 İkon Değiştir', callback_data: `admin_pay_icon_${methodId}` }],
+                    [{ text: '🔙 Geri', callback_data: 'admin_payment' }]
+                ]
+            }
+        });
+    }
+    
+    // Ödeme yöntemi aktif/pasif toggle
+    if (data.startsWith("admin_pay_toggle_")) {
+        const methodId = data.substring(17);
+        const method = (paymentSettings.methods || []).find(m => m.id === methodId);
+        if (method) {
+            method.enabled = !method.enabled;
+            savePaymentSettings(paymentSettings);
+            addLog('admin_action', `💳 ${method.name} ${method.enabled ? 'aktif' : 'pasif'} yapıldı`);
+        }
+        return showAdminPayment(chatId);
+    }
+    
+    // Ödeme yöntemi müşteri metni düzenle
+    if (data.startsWith("admin_pay_text_")) {
+        const methodId = data.substring(15);
+        adminState[chatId] = { action: 'edit_pay_text', methodId };
+        const method = (paymentSettings.methods || []).find(m => m.id === methodId);
+        return bot.sendMessage(chatId, `📝 **${method?.name || methodId}** için müşteriye gösterilecek metni yazın:\n\n` +
+            `💡 _Örnek: Hesap numarası, IBAN, cüzdan adresi vs._`, {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: [[{ text: '❌ İptal', callback_data: 'admin_payment' }]] }
+        });
+    }
+    
+    // Ödeme yöntemi isim değiştir
+    if (data.startsWith("admin_pay_name_")) {
+        const methodId = data.substring(15);
+        adminState[chatId] = { action: 'edit_pay_name', methodId };
+        return bot.sendMessage(chatId, `✏️ Yeni isim yazın:`, {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: [[{ text: '❌ İptal', callback_data: 'admin_payment' }]] }
+        });
+    }
+    
+    // Ödeme yöntemi ikon değiştir
+    if (data.startsWith("admin_pay_icon_")) {
+        const methodId = data.substring(15);
+        adminState[chatId] = { action: 'edit_pay_icon', methodId };
+        return bot.sendMessage(chatId, `🎨 Yeni ikon (emoji) yazın:`, {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: [[{ text: '❌ İptal', callback_data: 'admin_payment' }]] }
+        });
+    }
+    
+    // Yeni ödeme yöntemi ekle
+    if (data === "admin_pay_add") {
+        adminState[chatId] = { action: 'add_payment_method', step: 'name' };
+        return bot.sendMessage(chatId, `➕ **Yeni Ödeme Yöntemi Ekle**\n\n📝 Ödeme yöntemi adını yazın:\n\n_Örnek: PayPal, Kripto, Nakit vs._`, {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: [[{ text: '❌ İptal', callback_data: 'admin_payment' }]] }
+        });
+    }
+    
+    // Ödeme yöntemi silme menüsü
+    if (data === "admin_pay_delete") {
+        const methods = paymentSettings.methods || [];
+        if (methods.length === 0) {
+            return bot.sendMessage(chatId, "❌ Silinecek ödeme yöntemi yok.");
+        }
+        
+        const buttons = methods.map(m => [{ text: `🗑 ${m.icon} ${m.name}`, callback_data: `admin_pay_del_${m.id}` }]);
+        buttons.push([{ text: '🔙 Geri', callback_data: 'admin_payment' }]);
+        
+        return bot.sendMessage(chatId, `🗑 **Silmek istediğiniz ödeme yöntemini seçin:**`, {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: buttons }
+        });
+    }
+    
+    // Ödeme yöntemi sil onay
+    if (data.startsWith("admin_pay_del_")) {
+        const methodId = data.substring(14);
+        const method = (paymentSettings.methods || []).find(m => m.id === methodId);
+        if (!method) return bot.sendMessage(chatId, "❌ Ödeme yöntemi bulunamadı.");
+        
+        return bot.sendMessage(chatId, `⚠️ **${method.icon} ${method.name}** silinecek!\n\nEmin misiniz?`, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '✅ Evet, Sil', callback_data: `admin_pay_delconfirm_${methodId}` }],
+                    [{ text: '❌ İptal', callback_data: 'admin_payment' }]
+                ]
+            }
+        });
+    }
+    
+    // Ödeme yöntemi silme onaylandı
+    if (data.startsWith("admin_pay_delconfirm_")) {
+        const methodId = data.substring(21);
+        const methods = paymentSettings.methods || [];
+        const index = methods.findIndex(m => m.id === methodId);
+        if (index > -1) {
+            const deleted = methods.splice(index, 1)[0];
+            savePaymentSettings(paymentSettings);
+            addLog('admin_action', `🗑 Ödeme yöntemi silindi: ${deleted.name}`);
+            bot.sendMessage(chatId, `✅ **${deleted.icon} ${deleted.name}** silindi!`, { parse_mode: 'Markdown' });
+        }
+        return showAdminPayment(chatId);
     }
     
     // Admin - sipariş onay/red
@@ -2978,26 +3112,43 @@ function showAdminDurations(chatId, messageId = null) {
 }
 
 function showAdminPayment(chatId, messageId = null) {
-    const text = `💳 **Ödeme Ayarları**
-
-🏦 **IBAN:** \`${paymentSettings.iban}\`
-👤 **Alıcı:** \`${paymentSettings.iban_alici}\`
-📝 **Açıklama:** \`${paymentSettings.iban_aciklama}\`
-📱 **Papara:** \`${paymentSettings.papara}\`
-🔗 **Binance:** \`${paymentSettings.binance}\``;
+    // Dinamik ödeme yöntemlerini listele
+    const methods = paymentSettings.methods || [];
+    const enabledCount = methods.filter(m => m.enabled).length;
+    
+    let text = `💳 **Ödeme Ayarları**\n\n`;
+    text += `📊 Aktif yöntem: **${enabledCount}/${methods.length}**\n`;
+    text += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    // Mevcut yöntemleri listele
+    methods.forEach((m, i) => {
+        const status = m.enabled ? '✅' : '❌';
+        text += `${status} ${m.icon} **${m.name}**\n`;
+    });
+    
+    if (methods.length === 0) {
+        text += `⚠️ Henüz ödeme yöntemi eklenmemiş.\n`;
+    }
+    
+    text += `\n━━━━━━━━━━━━━━━━━━━━`;
+    
+    // Mevcut yöntemler için düzenleme butonları
+    const buttons = [];
+    methods.forEach((m) => {
+        const status = m.enabled ? '✅' : '❌';
+        buttons.push([{ text: `${status} ${m.icon} ${m.name}`, callback_data: `admin_pay_edit_${m.id}` }]);
+    });
+    
+    // Yeni ekle ve sil butonları
+    buttons.push([
+        { text: "➕ Yeni Ödeme Yöntemi", callback_data: "admin_pay_add" },
+        { text: "🗑 Yöntem Sil", callback_data: "admin_pay_delete" }
+    ]);
+    buttons.push([{ text: "🔙 Geri", callback_data: "admin_back" }]);
     
     const opts = {
         parse_mode: "Markdown",
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: "🏦 IBAN", callback_data: "admin_pay_iban" }],
-                [{ text: "👤 Alıcı Adı", callback_data: "admin_pay_iban_alici" }],
-                [{ text: "📝 Açıklama", callback_data: "admin_pay_iban_aciklama" }],
-                [{ text: "📱 Papara", callback_data: "admin_pay_papara" }],
-                [{ text: "🔗 Binance", callback_data: "admin_pay_binance" }],
-                [{ text: "🔙 Geri", callback_data: "admin_back" }]
-            ]
-        }
+        reply_markup: { inline_keyboard: buttons }
     };
     
     if (messageId) {
@@ -5147,14 +5298,16 @@ if (filesBot) {
                 text += `📊 Mevcut: ${mappingCount} eşleştirme\n\n`;
             }
             
-            // Shop ürünleri butonları
+            // Shop ürünleri butonları - index kullanarak çakışma önle
             const buttons = [];
-            for (const prodKey in shopData.products || {}) {
+            const prodKeys = Object.keys(shopData.products || {});
+            prodKeys.forEach((prodKey, index) => {
                 const prod = shopData.products[prodKey];
                 const shortName = prod.name.length > 25 ? prod.name.substring(0, 25) + '...' : prod.name;
                 const mapped = productMapping[prod.name] ? '✅' : '❌';
-                buttons.push([{ text: `${mapped} ${shortName}`, callback_data: `files_map_shop_${prodKey.substring(0, 25)}` }]);
-            }
+                // Index kullanarak benzersiz callback oluştur
+                buttons.push([{ text: `${mapped} ${shortName}`, callback_data: `files_map_idx_${index}` }]);
+            });
             
             if (buttons.length === 0) {
                 return filesBot.sendMessage(chatId, '❌ Shop bot\'ta ürün bulunamadı.', {
@@ -5170,20 +5323,67 @@ if (filesBot) {
             
             return filesBot.sendMessage(chatId, text + '✅ Eşleştirilmiş | ❌ Eşleştirilmemiş\n\nBir ürün seçin:', {
                 parse_mode: 'Markdown',
-                reply_markup: { inline_keyboard: buttons.slice(0, 20) },
+                reply_markup: { inline_keyboard: buttons },
             });
         }
 
+        // Yeni index tabanlı ürün seçimi
+        if (data.startsWith('files_map_idx_')) {
+            const index = parseInt(data.substring(14));
+            const shopData = loadProducts();
+            const prodKeys = Object.keys(shopData.products || {});
+            
+            if (index < 0 || index >= prodKeys.length) {
+                return filesBot.sendMessage(chatId, '❌ Ürün bulunamadı.');
+            }
+            
+            const prodKey = prodKeys[index];
+            const selectedProduct = shopData.products[prodKey];
+            
+            filesAdminState[chatId] = { action: 'mapping', shopProduct: selectedProduct.name };
+            
+            const currentMappings = productMapping[selectedProduct.name] || [];
+            const currentList = currentMappings.length > 0 ? currentMappings.join('\n') : '(Yok)';
+            
+            return filesBot.sendMessage(chatId, `**🔗 ${selectedProduct.name}**\n\n📁 Mevcut:\n${currentList}`, {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '➕ Menü Ekle', callback_data: 'files_map_add_menu' }],
+                        [{ text: '➖ Menü Çıkar', callback_data: 'files_map_remove_menu' }],
+                        [{ text: '🗑 Tümünü Sil', callback_data: 'files_map_clear' }],
+                        [{ text: '🔙 Geri', callback_data: 'files_mapping' }],
+                    ],
+                },
+            });
+        }
+
+        // Eski uyumluluk için (gerekirse kalsın)
         if (data.startsWith('files_map_shop_')) {
             const searchKey = data.substring(15);
             const shopData = loadProducts();
             let selectedProduct = null;
             
+            // Önce tam eşleşme ara
             for (const prodKey in shopData.products || {}) {
-                if (prodKey.startsWith(searchKey)) {
+                if (prodKey === searchKey || prodKey.substring(0, 25) === searchKey) {
                     selectedProduct = shopData.products[prodKey];
-                    break;
+                    // Tam eşleşme bulunduysa dur
+                    if (prodKey === searchKey) break;
                 }
+            }
+            
+            // Tam eşleşme yoksa, başlangıçla ara ama EN UZUN eşleşmeyi bul
+            if (!selectedProduct) {
+                let bestMatch = null;
+                let bestMatchLength = 0;
+                for (const prodKey in shopData.products || {}) {
+                    if (prodKey.startsWith(searchKey) && prodKey.length > bestMatchLength) {
+                        bestMatch = shopData.products[prodKey];
+                        bestMatchLength = prodKey.length;
+                    }
+                }
+                selectedProduct = bestMatch;
             }
             
             if (!selectedProduct) return filesBot.sendMessage(chatId, '❌ Ürün bulunamadı.');
