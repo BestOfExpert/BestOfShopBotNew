@@ -4487,6 +4487,7 @@ if (filesBot) {
         for (const orderId in activeKeys) {
             const entry = activeKeys[orderId];
             if (entry.expiresAt <= Date.now()) continue;
+            if (!entry.chatId || entry.chatId === 0) continue; // Müşteri ID'si olmayanları atla
             
             const userProducts = entry.products || (entry.product ? [entry.product] : []);
             const hasAccess = shopProducts.some(sp => userProducts.includes(sp)) || 
@@ -4900,10 +4901,11 @@ if (filesBot) {
             // Anahtarı kaydet
             const orderId = `manual_${Date.now()}`;
             const expiresAt = Date.now() + state.days * 24 * 60 * 60 * 1000;
+            const customerId = state.customerId || 0;
             
             activeKeys[orderId] = {
                 orderId: orderId,
-                chatId: 0, // Manuel eklenen, henüz kullanıcıya atanmadı
+                chatId: customerId, // Müşteri ID (0 ise atanmadı)
                 products: state.selectedMenus, // Seçilen menüler
                 key: state.key,
                 expiresAt: expiresAt,
@@ -4914,10 +4916,20 @@ if (filesBot) {
             
             const expiryDate = new Date(expiresAt).toLocaleDateString('tr-TR');
             const menuList = state.selectedMenus.map((m, i) => `${i + 1}. ${m}`).join('\n');
+            const customerInfo = customerId ? `👤 Müşteri ID: \`${customerId}\`` : '👤 Müşteri: Atanmadı';
             
             delete filesAdminState[chatId];
             
-            return filesBot.sendMessage(chatId, `✅ **Anahtar Başarıyla Eklendi!**\n\n🔑 Anahtar: \`${state.key}\`\n📅 Süre: ${state.days} gün\n📆 Bitiş: ${expiryDate}\n\n📦 **Erişim Verilen Menüler:**\n${menuList}`, {
+            // Müşteriye bildirim gönder (eğer ID varsa)
+            if (customerId) {
+                try {
+                    filesBot.sendMessage(customerId, `🎉 **Yeni Anahtar Atandı!**\n\n🔑 Anahtar: \`${state.key}\`\n📅 Süre: ${state.days} gün\n📆 Bitiş: ${expiryDate}\n\n📦 **Erişebileceğiniz Menüler:**\n${menuList}\n\n✅ Anahtarınızı kullanmak için bota yazın!`, {
+                        parse_mode: 'Markdown'
+                    }).catch(() => {});
+                } catch (e) {}
+            }
+            
+            return filesBot.sendMessage(chatId, `✅ **Anahtar Başarıyla Eklendi!**\n\n🔑 Anahtar: \`${state.key}\`\n📅 Süre: ${state.days} gün\n📆 Bitiş: ${expiryDate}\n${customerInfo}\n\n📦 **Erişim Verilen Menüler:**\n${menuList}`, {
                 parse_mode: 'Markdown',
                 reply_markup: { inline_keyboard: [[{ text: '🔙 Anahtar Yönetimi', callback_data: 'files_keys' }]] }
             });
@@ -4946,10 +4958,36 @@ if (filesBot) {
                 return filesBot.sendMessage(chatId, '❌ Geçersiz süre!');
             }
             
+            // Müşteri ID sorusu - opsiyonel
+            filesAdminState[chatId] = { 
+                action: 'manual_key_customer_id', 
+                key: state.key, 
+                days: days
+            };
+            
+            return filesBot.sendMessage(chatId, `**👤 Müşteri ID (Opsiyonel)**\n\n🔑 Anahtar: \`${state.key}\`\n📅 Süre: ${days} gün\n\nMüşteri Telegram ID'si girin (bildirim alması ve aktif müşteri sayılması için).\n\n⚠️ ID bilmiyorsanız "Atla" butonuna basın.`, {
+                parse_mode: 'Markdown',
+                reply_markup: { 
+                    inline_keyboard: [
+                        [{ text: '⏭️ Atla (ID\'siz devam et)', callback_data: 'files_manual_skip_customer' }],
+                        [{ text: '❌ İptal', callback_data: 'files_keys' }]
+                    ]
+                }
+            });
+        }
+        
+        // Müşteri ID atla - ID'siz devam et
+        if (data === 'files_manual_skip_customer') {
+            const state = filesAdminState[chatId];
+            if (!state || state.action !== 'manual_key_customer_id') {
+                return filesBot.sendMessage(chatId, '❌ Oturum hatası.');
+            }
+            
             filesAdminState[chatId] = { 
                 action: 'manual_key_step2', 
                 key: state.key, 
-                days: days,
+                days: state.days,
+                customerId: 0, // ID girilmedi
                 selectedMenus: []
             };
             
@@ -4968,7 +5006,7 @@ if (filesBot) {
             buttons.push([{ text: `✅ Seçimi Tamamla (0 menü)`, callback_data: 'files_key_manual_confirm' }]);
             buttons.push([{ text: '❌ İptal', callback_data: 'files_keys' }]);
             
-            return filesBot.sendMessage(chatId, `**📦 Menü Seçimi**\n\n🔑 Anahtar: \`${state.key}\`\n📅 Süre: ${days} gün\n\n**Seçilen Menüler:**\n(Henüz seçilmedi)\n\n👇 Erişim verilecek menüleri seçin (birden fazla seçebilirsiniz):`, {
+            return filesBot.sendMessage(chatId, `**📦 Menü Seçimi**\n\n🔑 Anahtar: \`${state.key}\`\n📅 Süre: ${state.days} gün\n👤 Müşteri: Atanmadı\n\n**Seçilen Menüler:**\n(Henüz seçilmedi)\n\n👇 Erişim verilecek menüleri seçin:`, {
                 parse_mode: 'Markdown',
                 reply_markup: { inline_keyboard: buttons.slice(0, 20) }
             });
@@ -5900,10 +5938,43 @@ if (filesBot) {
                 });
             }
             
+            // Müşteri ID sorusu - opsiyonel
+            filesAdminState[chatId] = { 
+                action: 'manual_key_customer_id', 
+                key: state.key, 
+                days: days
+            };
+            
+            return filesBot.sendMessage(chatId, `**👤 Müşteri ID (Opsiyonel)**\n\n🔑 Anahtar: \`${state.key}\`\n📅 Süre: ${days} gün\n\nMüşteri Telegram ID'si girin (bildirim alması ve aktif müşteri sayılması için).\n\n⚠️ ID bilmiyorsanız "Atla" butonuna basın.`, {
+                parse_mode: 'Markdown',
+                reply_markup: { 
+                    inline_keyboard: [
+                        [{ text: '⏭️ Atla (ID\'siz devam et)', callback_data: 'files_manual_skip_customer' }],
+                        [{ text: '❌ İptal', callback_data: 'files_keys' }]
+                    ]
+                }
+            });
+        }
+        
+        // Manuel anahtar - Müşteri ID girişi
+        if (state.action === 'manual_key_customer_id') {
+            const customerId = parseInt(text);
+            if (isNaN(customerId) || customerId <= 0) {
+                return filesBot.sendMessage(chatId, '❌ Geçersiz ID! Sayısal bir Telegram ID girin veya "Atla" butonuna basın:', {
+                    reply_markup: { 
+                        inline_keyboard: [
+                            [{ text: '⏭️ Atla (ID\'siz devam et)', callback_data: 'files_manual_skip_customer' }],
+                            [{ text: '❌ İptal', callback_data: 'files_keys' }]
+                        ]
+                    }
+                });
+            }
+            
             filesAdminState[chatId] = { 
                 action: 'manual_key_step2', 
                 key: state.key, 
-                days: days,
+                days: state.days,
+                customerId: customerId,
                 selectedMenus: []
             };
             
@@ -5922,7 +5993,7 @@ if (filesBot) {
             buttons.push([{ text: `✅ Seçimi Tamamla (0 menü)`, callback_data: 'files_key_manual_confirm' }]);
             buttons.push([{ text: '❌ İptal', callback_data: 'files_keys' }]);
             
-            return filesBot.sendMessage(chatId, `**📦 Menü Seçimi**\n\n🔑 Anahtar: \`${state.key}\`\n📅 Süre: ${days} gün\n\n**Seçilen Menüler:**\n(Henüz seçilmedi)\n\n👇 Erişim verilecek menüleri seçin (birden fazla seçebilirsiniz):`, {
+            return filesBot.sendMessage(chatId, `**📦 Menü Seçimi**\n\n🔑 Anahtar: \`${state.key}\`\n📅 Süre: ${state.days} gün\n👤 Müşteri: \`${customerId}\`\n\n**Seçilen Menüler:**\n(Henüz seçilmedi)\n\n👇 Erişim verilecek menüleri seçin:`, {
                 parse_mode: 'Markdown',
                 reply_markup: { inline_keyboard: buttons.slice(0, 20) }
             });
