@@ -1920,12 +1920,22 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
     // Ürün oyun ata
     if (data.startsWith("admin_set_prod_game_")) {
         if (chatId !== ADMIN_ID) return;
-        const parts = data.substring(20).split("_");
-        const prodKey = parts[0];
-        const gameKey = parts.slice(1).join("_");
+        const rest = data.substring(20); // cyrax_mod_mobile_legends
         const prodData = loadProducts();
         
-        if (prodData.products[prodKey]) {
+        // ProdKey'i bulmak için tüm ürünleri kontrol et
+        let prodKey = null;
+        let gameKey = null;
+        
+        for (const pk of Object.keys(prodData.products || {})) {
+            if (rest.startsWith(pk + '_')) {
+                prodKey = pk;
+                gameKey = rest.substring(pk.length + 1);
+                break;
+            }
+        }
+        
+        if (prodKey && prodData.products[prodKey]) {
             prodData.products[prodKey].game = gameKey;
             saveProducts(prodData);
             addLog('admin_action', `🎮 Ürün oyunu değişti: ${prodKey} -> ${gameKey}`);
@@ -1956,9 +1966,10 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
     // Ürün platform ata
     if (data.startsWith("admin_set_prod_plat_")) {
         if (chatId !== ADMIN_ID) return;
-        const parts = data.substring(20).split("_");
-        const prodKey = parts[0];
-        const platform = parts[1];
+        const rest = data.substring(20); // cyrax_mod_android
+        const lastUnderscore = rest.lastIndexOf('_');
+        const prodKey = rest.substring(0, lastUnderscore); // cyrax_mod
+        const platform = rest.substring(lastUnderscore + 1); // android
         const prodData = loadProducts();
         
         if (prodData.products[prodKey]) {
