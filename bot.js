@@ -2490,8 +2490,8 @@ Güncel haberler, duyurular ve kataloglar için kanallarımıza katılın!`;
         }
     }
     
-    // Admin - ürün düzenleme
-    if (data.startsWith("admin_edit_")) {
+    // Admin - ürün düzenleme (kategori callback'lerini hariç tut)
+    if (data.startsWith("admin_edit_") && !data.startsWith("admin_edit_cat_") && !data.startsWith("admin_edit_dur_")) {
         const productKey = data.substring(11);
         return showAdminProductEdit(chatId, productKey, messageId);
     }
